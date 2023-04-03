@@ -21,7 +21,6 @@
 #include <fstream>
 
 #include <boost/format.hpp>
-
 #include <gdcmReader.h>
 #include <gdcmStringFilter.h>
 
@@ -41,6 +40,7 @@ class SPECTDICOMData
 {
 public:
   SPECTDICOMData(const std::string& DICOM_filename){ dicom_filename = DICOM_filename; };
+
   stir::Succeeded get_interfile_header(std::string &output_header, const std::string& data_filename, const int dataset_num) const;
   stir::Succeeded get_proj_data(const std::string &output_file) const;
   stir::Succeeded open_dicom_file(bool is_planar);
@@ -54,6 +54,8 @@ private:
   std::string dicom_filename;
 
   float start_angle = 0.0f;
+  int num_of_projections = 0;
+
   float angular_step = 0.0f;
   int actual_frame_duration = 0; //frame duration in msec
   int num_of_rotations = 0;
@@ -64,6 +66,8 @@ private:
 
   std::vector<float> lower_en_window_thres;
   std::vector<float> upper_en_window_thres;
+
+  // std::string energy_window_name;
 
   int num_dimensions;
   std::vector<std::string> matrix_labels;
@@ -102,6 +106,7 @@ stir::Succeeded GetDICOMTagInfo(const gdcm::File &file, const gdcm::Tag tag, std
     std::vector<gdcm::Tag> seqs = { gdcm::Tag(0x0054,0x0052), gdcm::Tag(0x0054,0x0022), gdcm::Tag(0x0054,0x0012)};
 
     for (const auto& t : seqs) {
+
       try
         {
           const gdcm::DataElement &de = file.GetDataSet().GetDataElement(t);
@@ -123,6 +128,7 @@ stir::Succeeded GetDICOMTagInfo(const gdcm::File &file, const gdcm::Tag tag, std
 
   } catch (...){
     stir::error(boost::format("GetDICOMTagInfo: cannot read tag %1% sequence index %2%") % tag % sequence_idx);
+
     return stir::Succeeded::no;
   }
 
@@ -145,13 +151,16 @@ stir::Succeeded GetEnergyWindowInfo(const gdcm::File &file, const EnergyWindowIn
     //Get Energy Window Info Sequence
     const gdcm::DataElement &de = file.GetDataSet().GetDataElement(energy_window_info_seq);
     const gdcm::SequenceOfItems *sqi = de.GetValueAsSQ();
+
     const gdcm::Item &item = sqi->GetItem(sequence_idx);
 
     //Get Energy Window Range Sequence
     const gdcm::DataElement &element = item.GetDataElement(energy_window_range_seq);
     const gdcm::SequenceOfItems *sqi2 = element.GetValueAsSQ();
+
     if (sqi2->GetNumberOfItems() > 1)
       stir::warning("Energy window sequence contains more than 1 window. Ignoring all later ones");
+
     const gdcm::Item &item2 = sqi2->GetItem(1);
 
     //std::cout << item2 << std::endl;
@@ -171,6 +180,7 @@ stir::Succeeded GetEnergyWindowInfo(const gdcm::File &file, const EnergyWindowIn
     }
 
   } catch (...){
+
     stir::error(boost::format("GetEnergyWindowInfo: cannot read energy info"));
     return stir::Succeeded::no;
   }
@@ -196,13 +206,13 @@ stir::Succeeded GetRadionuclideInfo(const gdcm::File &file, const RadionuclideIn
     const gdcm::SequenceOfItems *sqi = de.GetValueAsSQ();
     const gdcm::Item &item = sqi->GetItem(sequence_idx);
 
-
     //Get Radiopnuclide Code Sequence
     gdcm::DataElement nuclide_element;
     const gdcm::DataElement &element = item.GetDataElement(radionuclide_code_seq_tag);
     if(element.GetVL()>0){
     const gdcm::SequenceOfItems *sqi2 = element.GetValueAsSQ();
     const gdcm::Item &item2 = sqi2->GetItem(sequence_idx);
+
     //std::cout<< "num items"<< sqi2->GetNumberOfItems();
     //std::cout << item2 << std::endl;
 
@@ -262,7 +272,6 @@ stir::Succeeded SPECTDICOMData::open_dicom_file(bool is_planar)
   std::string pixel_size_as_string;
   std::string lower_window_as_string;
   std::string upper_window_as_string;
-
   
   {
     std::string str;
@@ -317,6 +326,7 @@ stir::Succeeded SPECTDICOMData::open_dicom_file(bool is_planar)
             rotation_radius =(radius_as_string);
       char slash='\\';
       char comma=',';
+      //char comma='\,';
       std::cout << "Radius: " << radius_as_string <<" " <<slash<< std::endl;
       std::replace(rotation_radius.begin(), rotation_radius.end(),slash,comma);
       }
@@ -383,7 +393,6 @@ stir::Succeeded SPECTDICOMData::open_dicom_file(bool is_planar)
 
   return stir::Succeeded::yes;
 }
-
 
 stir::Succeeded SPECTDICOMData::get_interfile_header(std::string &output_header, const std::string& data_filename, const int dataset_num) const{
 
@@ -516,6 +525,7 @@ stir::Succeeded SPECTDICOMData::get_proj_data(const std::string &output_file) co
 int main(int argc, char * argv[])
 {
 
+
     if ( argc!=4) {
       std::cerr << "Usage: " << argv[0] << " <output_interfile_prefix> sinogram(dcm)> is_planar?\n";
       exit(EXIT_FAILURE);
@@ -533,6 +543,7 @@ int main(int argc, char * argv[])
     }
   } catch(const std::exception& e){
     std::cerr << e.what() << std::endl;
+
     return EXIT_FAILURE;
   }
 
