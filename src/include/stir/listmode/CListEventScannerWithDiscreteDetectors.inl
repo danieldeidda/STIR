@@ -29,14 +29,14 @@ START_NAMESPACE_STIR
 
 template <class ProjDataInfoT>
 CListEventScannerWithDiscreteDetectors<ProjDataInfoT>::
-CListEventScannerWithDiscreteDetectors(const shared_ptr<const ProjDataInfo>& proj_data_info_sptr)
+CListEventScannerWithDiscreteDetectors(const shared_ptr<Scanner>& scanner_sptr_v)
 {
   if (!proj_data_info_sptr)
     error("CListEventScannerWithDiscreteDetectors constructor called with zero pointer");
 
-  this->uncompressed_proj_data_info_sptr = std::dynamic_pointer_cast< const ProjDataInfoT >(proj_data_info_sptr->create_shared_clone());
+//  this->uncompressed_proj_data_info_sptr = std::dynamic_pointer_cast< const ProjDataInfoT >(proj_data_info_sptr->create_shared_clone());
 
-#if 0 // TODO: actually create uncompressed.
+//#if 0 // TODO: actually create uncompressed.
   this->scanner_sptr = scanner_sptr_v;
   auto pdi_ptr =
      ProjDataInfo::ProjDataInfoCTI(scanner_sptr_v, 
@@ -52,7 +52,7 @@ CListEventScannerWithDiscreteDetectors(const shared_ptr<const ProjDataInfo>& pro
       error("CListEventScannerWithDiscreteDetectors constructor called with scanner that gives wrong type of ProjDataInfo");
     }
   this->uncompressed_proj_data_info_sptr.reset(pdi_ptr_cast);
-#endif
+//#endif
 }
 
 template <class ProjDataInfoT>
