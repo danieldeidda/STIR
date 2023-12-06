@@ -37,7 +37,7 @@ class CListEventScannerWithDiscreteDetectors : public CListEvent
 {
 public:
 
-  explicit CListEventScannerWithDiscreteDetectors(const shared_ptr<const ProjDataInfo>& proj_data_info);
+  explicit CListEventScannerWithDiscreteDetectors(const shared_ptr<Scanner>&);
 
   const Scanner * get_scanner_ptr() const
     { return this->uncompressed_proj_data_info_sptr->get_scanner_ptr(); }
@@ -78,7 +78,7 @@ public:
        return uncompressed_proj_data_info_sptr;
      }
 
-   //shared_ptr<Scanner> scanner_sptr;
+   shared_ptr<Scanner> scanner_sptr;
 
  private:
    shared_ptr<const ProjDataInfoT>

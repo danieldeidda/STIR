@@ -31,8 +31,8 @@ template <class ProjDataInfoT>
 CListEventScannerWithDiscreteDetectors<ProjDataInfoT>::
 CListEventScannerWithDiscreteDetectors(const shared_ptr<Scanner>& scanner_sptr_v)
 {
-  if (!proj_data_info_sptr)
-    error("CListEventScannerWithDiscreteDetectors constructor called with zero pointer");
+  if (!scanner_sptr_v)
+      error("CListEventScannerWithDiscreteDetectors constructor called with zero scanner pointer");
 
 //  this->uncompressed_proj_data_info_sptr = std::dynamic_pointer_cast< const ProjDataInfoT >(proj_data_info_sptr->create_shared_clone());
 
@@ -40,9 +40,9 @@ CListEventScannerWithDiscreteDetectors(const shared_ptr<Scanner>& scanner_sptr_v
   this->scanner_sptr = scanner_sptr_v;
   auto pdi_ptr =
      ProjDataInfo::ProjDataInfoCTI(scanner_sptr_v, 
-                                   1, scanner_sptr->get_num_rings()-1,
-                                   scanner_sptr->get_num_detectors_per_ring()/2,
-                                   scanner_sptr->get_max_num_non_arccorrected_bins(),
+                                   1, this->scanner_sptr->get_num_rings()-1,
+                                   this->scanner_sptr->get_num_detectors_per_ring()/2,
+                                   this->scanner_sptr->get_max_num_non_arccorrected_bins(),
                                    false);
   auto pdi_ptr_cast =
     dynamic_cast<ProjDataInfoT *>(pdi_ptr);
