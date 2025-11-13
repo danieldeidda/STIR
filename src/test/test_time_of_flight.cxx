@@ -1,17 +1,9 @@
 /*
-    Copyright (C) 2016, 2022, UCL
+    Copyright (C) 2016, 2022, 2025, UCL
     Copyright (C) 2016, University of Hull
     This file is part of STIR.
 
-    This file is free software; you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as published by
-    the Free Software Foundation; either version 2.1 of the License, or
-    (at your option) any later version.
-
-    This file is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Lesser General Public License for more details.
+    SPDX-License-Identifier: Apache-2.0
     See STIR/LICENSE.txt for details
 */
 
@@ -35,13 +27,13 @@
 #include "stir/shared_ptr.h"
 #include "stir/RunTests.h"
 #include "stir/Scanner.h"
-#include "boost/lexical_cast.hpp"
 #ifdef HAVE_CERN_ROOT
 #  include "stir/listmode/CListRecordROOT.h"
 #endif
 #include "stir/info.h"
 #include "stir/warning.h"
 #include <cmath>
+#include <algorithm>
 
 START_NAMESPACE_STIR
 
@@ -87,7 +79,7 @@ private:
 #ifdef HAVE_CERN_ROOT
   void test_CListEventROOT();
 #endif
-  //! This checks peaks a specific bin, finds the LOR and applies all the
+  //! This check picks a specific bin, finds the LOR and applies all the
   //! kernels of all available timing positions. Then check if the sum
   //! of the TOF bins is equal to the non-TOF LOR.
   void test_tof_kernel_application(bool export_to_file);
@@ -325,13 +317,10 @@ TOF_Tests::test_CListEventROOT()
 void
 TOF_Tests::test_tof_kernel_application(bool print_to_file)
 {
-  int seg_num = 0;
-  int view_num = 0;
-  int axial_num = 0;
-  int tang_num = 0;
-
-  float nonTOF_val = 0.0;
-  float TOF_val = 0.0;
+  int seg_num = 3;
+  int view_num = 2;
+  int axial_num = 1;
+  int tang_num = 4;
 
   ProjMatrixElemsForOneBin proj_matrix_row;
   ProjMatrixElemsForOneBin sum_tof_proj_matrix_row;
@@ -377,45 +366,14 @@ TOF_Tests::test_tof_kernel_application(bool print_to_file)
         export_lor(new_proj_matrix_row, lor2.p1(), lor2.p2(), timing_pos_num, proj_matrix_row);
 
       if (sum_tof_proj_matrix_row.size() > 0)
-        {
-          ProjMatrixElemsForOneBin::iterator element_ptr = new_proj_matrix_row.begin();
-          while (element_ptr != new_proj_matrix_row.end())
-            {
-              ProjMatrixElemsForOneBin::iterator sum_element_ptr = sum_tof_proj_matrix_row.begin();
-              bool found = false;
-              while (sum_element_ptr != sum_tof_proj_matrix_row.end())
-                {
-                  if (element_ptr->get_coords() == sum_element_ptr->get_coords())
-                    {
-                      float new_value = element_ptr->get_value() + sum_element_ptr->get_value();
-                      *sum_element_ptr = ProjMatrixElemsForOneBin::value_type(element_ptr->get_coords(), new_value);
-                      found = true;
-                      break;
-                    }
-                  ++sum_element_ptr;
-                }
-              if (!found)
-                {
-                  sum_tof_proj_matrix_row.push_back(
-                      ProjMatrixElemsForOneBin::value_type(element_ptr->get_coords(), element_ptr->get_value()));
-                  break;
-                }
-              ++element_ptr;
-            }
-        }
+        sum_tof_proj_matrix_row.merge(new_proj_matrix_row);
       else
-        {
-          ProjMatrixElemsForOneBin::iterator element_ptr = new_proj_matrix_row.begin();
-          while (element_ptr != new_proj_matrix_row.end())
-            {
-              sum_tof_proj_matrix_row.push_back(
-                  ProjMatrixElemsForOneBin::value_type(element_ptr->get_coords(), element_ptr->get_value()));
-              ++element_ptr;
-            }
-        }
+        sum_tof_proj_matrix_row = new_proj_matrix_row;
     }
-
+ 
   // Get value of nonTOF LOR, for central voxels only
+  float nonTOF_val = 0.0;
+  float TOF_val = 0.0;
 
   {
     ProjMatrixElemsForOneBin::iterator element_ptr = proj_matrix_row.begin();
@@ -442,16 +400,13 @@ TOF_Tests::test_tof_kernel_application(bool print_to_file)
   check_if_equal(
       static_cast<double>(nonTOF_val), static_cast<double>(TOF_val), "Sum over nonTOF LOR does not match sum over TOF LOR.");
 
+  // report timings
   {
-    double mean = 0.0;
-    for (unsigned i = 0; i < times_of_tofing.size(); i++)
-      mean += times_of_tofing.at(i);
-
-    mean /= (times_of_tofing.size());
+    double mean = std::accumulate(times_of_tofing.begin(), times_of_tofing.end(), 0.) / (times_of_tofing.size());
 
     double s = 0.0;
     for (unsigned i = 0; i < times_of_tofing.size(); i++)
-      s += (times_of_tofing.at(i) - mean) * (times_of_tofing.at(i) - mean) / (times_of_tofing.size() - 1);
+      s += square(times_of_tofing.at(i) - mean) / (times_of_tofing.size() - 1);
 
     s = std::sqrt(s);
     std::cerr << "Execution  time  for TOF: " << mean << " ±" << s;
@@ -467,7 +422,7 @@ TOF_Tests::export_lor(ProjMatrixElemsForOneBin& probabilities,
                       int current_id)
 {
   std::ofstream myfile;
-  std::string file_name = "glor_" + boost::lexical_cast<std::string>(current_id) + ".txt";
+  std::string file_name = "glor_" + std::to_string(current_id) + ".txt";
   myfile.open(file_name.c_str());
 
   CartesianCoordinate3D<float> voxel_center;
@@ -520,7 +475,7 @@ TOF_Tests::export_lor(ProjMatrixElemsForOneBin& probabilities,
                       ProjMatrixElemsForOneBin& template_probabilities)
 {
   std::ofstream myfile;
-  std::string file_name = "glor_" + boost::lexical_cast<std::string>(current_id) + ".txt";
+  std::string file_name = "glor_" + std::to_string(current_id) + ".txt";
   myfile.open(file_name.c_str());
 
   const CartesianCoordinate3D<float> middle = (point1 + point2) * 0.5f;
