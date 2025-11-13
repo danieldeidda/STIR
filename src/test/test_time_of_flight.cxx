@@ -9,24 +9,16 @@
 
 #include "stir/ProjDataInfoCylindricalNoArcCorr.h"
 #include "stir/DetectionPositionPair.h"
-#include "stir/recon_buildblock/ProjMatrixByBin.h"
 #include "stir/recon_buildblock/ProjMatrixByBinUsingRayTracing.h"
-#include "stir/recon_buildblock/ForwardProjectorByBinUsingProjMatrixByBin.h"
-#include "stir/recon_buildblock/BackProjectorByBinUsingProjMatrixByBin.h"
 #include "stir/recon_buildblock/ProjMatrixElemsForOneBin.h"
-#include "stir/recon_buildblock/ProjectorByBinPair.h"
-#include "stir/recon_buildblock/ProjectorByBinPairUsingSeparateProjectors.h"
 #include "stir/HighResWallClockTimer.h"
-#include "stir/DiscretisedDensity.h"
 #include "stir/VoxelsOnCartesianGrid.h"
-#include "stir/recon_buildblock/ProjMatrixElemsForOneBin.h"
-#include "stir/ViewSegmentNumbers.h"
-#include "stir/RelatedViewgrams.h"
-//#include "stir/geometry/line_distances.h"
 #include "stir/Succeeded.h"
 #include "stir/shared_ptr.h"
 #include "stir/RunTests.h"
 #include "stir/Scanner.h"
+//#include "stir/stream.h"
+
 #ifdef HAVE_CERN_ROOT
 #  include "stir/listmode/CListRecordROOT.h"
 #endif
@@ -83,6 +75,8 @@ private:
   //! kernels of all available timing positions. Then check if the sum
   //! of the TOF bins is equal to the non-TOF LOR.
   void test_tof_kernel_application(bool export_to_file);
+
+  void test_tof_kernel_application_is_symmetric();
 
   //! Exports the nonTOF LOR to a file indicated by the current_id value
   //! in the filename.
@@ -156,6 +150,7 @@ TOF_Tests::run_tests()
 
   // Switch to true in order to export the LORs at files in the current directory
   test_tof_kernel_application(false);
+  test_tof_kernel_application_is_symmetric();
 }
 
 void
@@ -328,10 +323,7 @@ TOF_Tests::test_tof_kernel_application(bool print_to_file)
   HighResWallClockTimer t;
   std::vector<double> times_of_tofing;
 
-  ProjDataInfoCylindrical* proj_data_ptr = dynamic_cast<ProjDataInfoCylindrical*>(test_proj_data_info_sptr.get());
-
-  //    ProjDataInfoCylindrical* proj_data_nonTOF_ptr =
-  //            dynamic_cast<ProjDataInfoCylindrical*> (test_nonTOF_proj_data_info_sptr.get());
+  auto proj_data_ptr = test_proj_data_info_sptr.get();
 
   LORInAxialAndNoArcCorrSinogramCoordinates<float> lor;
 
@@ -413,6 +405,37 @@ TOF_Tests::test_tof_kernel_application(bool print_to_file)
   }
 
   std::cerr << std::endl;
+}
+
+void
+TOF_Tests::test_tof_kernel_application_is_symmetric()
+{
+  int seg_num = test_proj_data_info_sptr->get_max_segment_num();
+  int view_num = 0;
+  int axial_num = (test_proj_data_info_sptr->get_min_axial_pos_num(seg_num) + test_proj_data_info_sptr->get_max_axial_pos_num(seg_num)) / 2;
+  int tang_num = 0;
+
+  ProjMatrixElemsForOneBin proj_matrix_row;
+  Bin this_bin(seg_num, view_num, axial_num, tang_num, test_proj_data_info_sptr->get_max_tof_pos_num(), 1.f);
+  test_proj_matrix_sptr->get_proj_matrix_elems_for_one_bin(proj_matrix_row, this_bin);
+
+  ProjMatrixElemsForOneBin proj_matrix_row2;
+  this_bin.timing_pos_num() = test_proj_data_info_sptr->get_min_tof_pos_num();
+  test_proj_matrix_sptr->get_proj_matrix_elems_for_one_bin(proj_matrix_row2, this_bin);
+
+  // check if symmetric
+  {
+    auto riter = proj_matrix_row.rbegin();
+    auto iter2 = proj_matrix_row2.begin();
+    while (riter != proj_matrix_row.rend())
+      {
+        std::cerr << riter->get_coords() << "," << riter->get_value() << iter2->get_coords() << iter2->get_value() << "\n";
+        check_if_equal(riter->get_value(), iter2->get_value(), "check symmetry in TOF");
+        ++iter2;
+        ++riter;
+      }
+  }
+
 }
 
 void
