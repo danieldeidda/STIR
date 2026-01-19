@@ -56,6 +56,8 @@ public:
 
   *. Check that the sum of the TOF LOR is the same as the non TOF.
 
+  *. Check if the back-projection of the first and last TOF bin are symmetric for an oblique LOR
+
   \warning If you change the mashing factor the test_tof_proj_data_info() will fail.
   \warning The execution time strongly depends on the value of the TOF mashing factor
 */
@@ -74,25 +76,10 @@ private:
   //! This check picks a specific bin, finds the LOR and applies all the
   //! kernels of all available timing positions. Then check if the sum
   //! of the TOF bins is equal to the non-TOF LOR.
-  void test_tof_kernel_application(bool export_to_file);
+  void test_tof_kernel_application();
 
+  //! Check if the back-projection of the first and last TOF bin are symmetric for an oblique LOR
   void test_tof_kernel_application_is_symmetric();
-
-  //! Exports the nonTOF LOR to a file indicated by the current_id value
-  //! in the filename.
-  void export_lor(ProjMatrixElemsForOneBin& probabilities,
-                  const CartesianCoordinate3D<float>& point1,
-                  const CartesianCoordinate3D<float>& point2,
-                  int current_id);
-
-  //! Exports the TOF LOR. The TOFid is indicated in the fileName.
-  //! Only the common elements with the nonTOF LOR will be written in the file.
-  //! Although changing that is straight forward.
-  void export_lor(ProjMatrixElemsForOneBin& probabilities,
-                  const CartesianCoordinate3D<float>& point1,
-                  const CartesianCoordinate3D<float>& point2,
-                  int current_id,
-                  ProjMatrixElemsForOneBin& template_probabilities);
 
   shared_ptr<Scanner> test_scanner_sptr;
   shared_ptr<ProjDataInfo> test_proj_data_info_sptr;
@@ -148,8 +135,7 @@ TOF_Tests::run_tests()
   dynamic_cast<ProjMatrixByBinUsingRayTracing*>(test_nonTOF_proj_matrix_sptr.get())
       ->set_up(test_nonTOF_proj_data_info_sptr, test_discretised_density_sptr);
 
-  // Switch to true in order to export the LORs at files in the current directory
-  test_tof_kernel_application(false);
+  test_tof_kernel_application();
   test_tof_kernel_application_is_symmetric();
 }
 
@@ -310,7 +296,7 @@ TOF_Tests::test_CListEventROOT()
 #endif
 
 void
-TOF_Tests::test_tof_kernel_application(bool print_to_file)
+TOF_Tests::test_tof_kernel_application()
 {
   int seg_num = 3;
   int view_num = 2;
@@ -338,9 +324,6 @@ TOF_Tests::test_tof_kernel_application(bool print_to_file)
   proj_data_ptr->get_LOR(lor, this_bin);
   LORAs2Points<float> lor2(lor);
 
-  if (print_to_file)
-    export_lor(proj_matrix_row, lor2.p1(), lor2.p2(), 500000000);
-
   for (int timing_pos_num = test_proj_data_info_sptr->get_min_tof_pos_num();
        timing_pos_num <= test_proj_data_info_sptr->get_max_tof_pos_num();
        ++timing_pos_num)
@@ -354,15 +337,12 @@ TOF_Tests::test_tof_kernel_application(bool print_to_file)
       t.stop();
       times_of_tofing.push_back(t.value());
 
-      if (print_to_file)
-        export_lor(new_proj_matrix_row, lor2.p1(), lor2.p2(), timing_pos_num, proj_matrix_row);
-
       if (sum_tof_proj_matrix_row.size() > 0)
         sum_tof_proj_matrix_row.merge(new_proj_matrix_row);
       else
         sum_tof_proj_matrix_row = new_proj_matrix_row;
     }
- 
+
   // Get value of nonTOF LOR, for central voxels only
   float nonTOF_val = 0.0;
   float TOF_val = 0.0;
@@ -407,12 +387,19 @@ TOF_Tests::test_tof_kernel_application(bool print_to_file)
   std::cerr << std::endl;
 }
 
+/*!
+  Check the matrix rows for the first and last TOF bin (for an oblique LOR). The
+  detection probabilities should be symmetric w.r.t. eachother.
+
+  Ideally, we'd also check the voxel indices, but that is not implemented yet.
+*/
 void
 TOF_Tests::test_tof_kernel_application_is_symmetric()
 {
   int seg_num = test_proj_data_info_sptr->get_max_segment_num();
   int view_num = 0;
-  int axial_num = (test_proj_data_info_sptr->get_min_axial_pos_num(seg_num) + test_proj_data_info_sptr->get_max_axial_pos_num(seg_num)) / 2;
+  int axial_num
+      = (test_proj_data_info_sptr->get_min_axial_pos_num(seg_num) + test_proj_data_info_sptr->get_max_axial_pos_num(seg_num)) / 2;
   int tang_num = 0;
 
   ProjMatrixElemsForOneBin proj_matrix_row;
@@ -429,124 +416,12 @@ TOF_Tests::test_tof_kernel_application_is_symmetric()
     auto iter2 = proj_matrix_row2.begin();
     while (riter != proj_matrix_row.rend())
       {
-        std::cerr << riter->get_coords() << "," << riter->get_value() << iter2->get_coords() << iter2->get_value() << "\n";
+        // std::cerr << riter->get_coords() << "," << riter->get_value() << iter2->get_coords() << iter2->get_value() << "\n";
         check_if_equal(riter->get_value(), iter2->get_value(), "check symmetry in TOF");
         ++iter2;
         ++riter;
       }
   }
-
-}
-
-void
-TOF_Tests::export_lor(ProjMatrixElemsForOneBin& probabilities,
-                      const CartesianCoordinate3D<float>& point1,
-                      const CartesianCoordinate3D<float>& point2,
-                      int current_id)
-{
-  std::ofstream myfile;
-  std::string file_name = "glor_" + std::to_string(current_id) + ".txt";
-  myfile.open(file_name.c_str());
-
-  CartesianCoordinate3D<float> voxel_center;
-
-  std::vector<FloatFloat> lor_to_export;
-  lor_to_export.reserve(probabilities.size());
-
-  const CartesianCoordinate3D<float> middle = (point1 + point2) * 0.5f;
-  const CartesianCoordinate3D<float> diff = point2 - middle;
-
-  const float lor_length = 1.f / (std::sqrt(diff.x() * diff.x() + diff.y() * diff.y() + diff.z() * diff.z()));
-
-  ProjMatrixElemsForOneBin::iterator element_ptr = probabilities.begin();
-  while (element_ptr != probabilities.end())
-    {
-      voxel_center = test_discretised_density_sptr->get_physical_coordinates_for_indices(element_ptr->get_coords());
-
-      //        if(voxel_center.z() == 0.f)
-      {
-        project_point_on_a_line(point1, point2, voxel_center);
-
-        const CartesianCoordinate3D<float> x = voxel_center - middle;
-
-        const float d2 = -inner_product(x, diff) * lor_length;
-
-        FloatFloat tmp;
-        tmp.float1 = d2;
-
-        //            std::cerr<< voxel_center.x() << " " << voxel_center.y() << " " << voxel_center.z() << " "  <<
-        //                        d1 << " " << d2 << " " << d12 << " " << element_ptr->get_value() <<std::endl;
-
-        tmp.float2 = element_ptr->get_value();
-        lor_to_export.push_back(tmp);
-      }
-      ++element_ptr;
-    }
-
-  for (unsigned int i = 0; i < lor_to_export.size(); i++)
-    myfile << lor_to_export.at(i).float1 << "  " << lor_to_export.at(i).float2 << std::endl;
-
-  myfile << std::endl;
-  myfile.close();
-}
-
-void
-TOF_Tests::export_lor(ProjMatrixElemsForOneBin& probabilities,
-                      const CartesianCoordinate3D<float>& point1,
-                      const CartesianCoordinate3D<float>& point2,
-                      int current_id,
-                      ProjMatrixElemsForOneBin& template_probabilities)
-{
-  std::ofstream myfile;
-  std::string file_name = "glor_" + std::to_string(current_id) + ".txt";
-  myfile.open(file_name.c_str());
-
-  const CartesianCoordinate3D<float> middle = (point1 + point2) * 0.5f;
-  const CartesianCoordinate3D<float> diff = point2 - middle;
-
-  const float lor_length = 1.f / (std::sqrt(diff.x() * diff.x() + diff.y() * diff.y() + diff.z() * diff.z()));
-
-  CartesianCoordinate3D<float> voxel_center;
-
-  std::vector<FloatFloat> lor_to_export;
-  lor_to_export.reserve(template_probabilities.size());
-
-  ProjMatrixElemsForOneBin::iterator tmpl_element_ptr = template_probabilities.begin();
-  while (tmpl_element_ptr != template_probabilities.end())
-    {
-      voxel_center = test_discretised_density_sptr->get_physical_coordinates_for_indices(tmpl_element_ptr->get_coords());
-      //        if(voxel_center.z() == 0.f)
-      {
-        project_point_on_a_line(point1, point2, voxel_center);
-
-        const CartesianCoordinate3D<float> x = voxel_center - middle;
-
-        const float d2 = -inner_product(x, diff) * lor_length;
-
-        FloatFloat tmp;
-        tmp.float1 = d2;
-
-        ProjMatrixElemsForOneBin::iterator element_ptr = probabilities.begin();
-
-        while (element_ptr != probabilities.end())
-          {
-            if (element_ptr->get_coords() == tmpl_element_ptr->get_coords())
-              {
-                tmp.float2 = element_ptr->get_value();
-                lor_to_export.push_back(tmp);
-                break;
-              }
-            ++element_ptr;
-          }
-      }
-      ++tmpl_element_ptr;
-    }
-
-  for (unsigned int i = 0; i < lor_to_export.size(); i++)
-    myfile << lor_to_export.at(i).float1 << "  " << lor_to_export.at(i).float2 << std::endl;
-
-  myfile << std::endl;
-  myfile.close();
 }
 
 END_NAMESPACE_STIR
