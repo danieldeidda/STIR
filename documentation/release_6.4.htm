@@ -51,11 +51,15 @@
 
   <h3>Changed functionality</h3>
   <ul>
+    <li>When using a (ray tracing) matrix as projector, previously the matrix stored elements for the whole LOR,
+      while many elements would be zero. We now only store the non-zero ones, resulting in a speed-up for the Siemens Vision Quadra of about a factor 1.7. Memory usage is also reduced.<br>
+      <a href=https://github.com/UCL/STIR/pull/1674># 1674</a>.
+    </li>
     <li>
       OpenMP parallelisation was added to the function to create a 2d histogram of hits per crystal 
       from a proj data object, <code>make_fan_sum_data</code>.
       <br>
-      <a href=https://github.com/UCL/STIR/pull/1667>PR #1667</a>
+      <a href=https://github.com/UCL/STIR/pull/1667>PR #1667</a>.
     </li>
   </ul>
   <h4>Changes to examples</h4>
@@ -64,6 +68,11 @@
 
   <h3>Bug fixes</h3>
   <ul>
+    <li>
+      An important bug fix for the "ray tracing matrix" (or actually any "matrix") projector for TOF PET. Previously, oblique
+      segments had problems, see <a href=https://github.com/UCL/STIR/issues/1537># 1537</a>.<br>
+      <a href=https://github.com/UCL/STIR/pull/1675># 1675</a>. Extra tests were introduced in <a href=https://github.com/UCL/STIR/pull/1674># 1674</a>.
+    </li>
   </ul>
 
   <h3>Build system</h3>
@@ -93,9 +102,7 @@
 </ul>
 
   <h3>Known problems</h3>
-  <p>See <a href=https://github.com/UCL/STIR/labels/bug>our issue tracker</a>.<br>
-    An important bug is for the "ray tracing matrix" projector for TOF PET. Oblique
-    segments currently have problems, see <a href=https://github.com/UCL/STIR/issues/1537># 1537</a>.
+  <p>See <a href=https://github.com/UCL/STIR/labels/bug>our issue tracker</a>.
   </p>
 
 
