@@ -53,7 +53,14 @@
   <ul>
     <li>When using a (ray tracing) matrix as projector, previously the matrix stored elements for the whole LOR,
       while many elements would be zero. We now only store the non-zero ones, resulting in a speed-up for the Siemens Vision Quadra of about a factor 1.7. Memory usage is also reduced.<br>
-      <a href=https://github.com/UCL/STIR/pull/1674># 1674</a>
+      <a href=https://github.com/UCL/STIR/pull/1674># 1674</a>.
+    </li>
+    <li>
+      OpenMP parallelisation was added to the function to create a 2d histogram of hits per crystal 
+      from a proj data object, <code>make_fan_sum_data</code>.
+      <br>
+      <a href=https://github.com/UCL/STIR/pull/1667>PR #1667</a>.
+    </li>
   </ul>
   <h4>Changes to examples</h4>
   <ul>
@@ -103,6 +110,10 @@
 
   <h3>New functionality</h3>
   <ul>
+    <li>
+      Added a Python script to convert e7tools generated Siemens Biograph Vision 600 sinograms to STIR compatible format.
+      <a href=https://github.com/UCL/STIR/pull/1675>PR #1675</a>
+    </li>
   </ul>
 
   <h3>Changed functionality</h3>
