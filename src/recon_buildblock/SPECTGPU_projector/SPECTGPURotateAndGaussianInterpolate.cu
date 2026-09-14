@@ -10,12 +10,10 @@
   a la Wallis et al 1997,TMI, doi: 10.1109/42.552061.
 
   \author Daniel Deidda
-  \author Hei Yin Jowett Chan
 
 */
 /*
     Copyright (C) 2026, National Physical Laboratory
-    Copyright (C) 2026, Convergent Imaging Solutions
     This file is part of STIR.
 
     SPDX-License-Identifier: Apache-2.0
