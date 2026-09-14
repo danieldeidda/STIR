@@ -57,6 +57,10 @@ private:
   bool post_processing();
   bool _verbosity;
   bool _use_truncation;
+  bool _do_atten;
+  std::string _att_filename;
+  float _slope, _sigma0;
+  shared_ptr<DiscretisedDensity<3, float>> _att_coeff_sptr;
 };
 
 END_NAMESPACE_STIR

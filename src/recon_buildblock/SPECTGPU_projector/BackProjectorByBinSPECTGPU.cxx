@@ -29,6 +29,7 @@
 #include "stir/recon_array_functions.h"
 #include "stir/error.h"
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUBackwardProjectorCUDA.h"
+#include "stir/IO/read_from_file.h"
 
 START_NAMESPACE_STIR
 
@@ -38,7 +39,9 @@ const char* const BackProjectorByBinSPECTGPU::registered_name = "SPECTGPU";
 BackProjectorByBinSPECTGPU::BackProjectorByBinSPECTGPU()
     : _cuda_device(0),
       _cuda_verbosity(true),
-      _use_truncation(false)
+      _use_truncation(false),
+      _slope(-1),
+      _sigma0(-1)
 {
   this->_already_set_up = false;
 }
@@ -52,6 +55,9 @@ BackProjectorByBinSPECTGPU::initialise_keymap()
   parser.add_start_key("Back Projector Using SPECTGPU Parameters");
   parser.add_stop_key("End Back Projector Using SPECTGPU Parameters");
   parser.add_key("CUDA device", &_cuda_device);
+  parser.add_key("collimator slope", &_slope);
+  parser.add_key("collimator sigma 0(cm)", &_sigma0);
+  parser.add_key("attenuation image filename", &_att_filename);
   parser.add_key("verbosity", &_cuda_verbosity);
 }
 
@@ -62,6 +68,59 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
   BackProjectorByBin::set_up(proj_data_info_sptr, density_info_sptr);
   check(*proj_data_info_sptr, *_density_sptr);
   _symmetries_sptr.reset(new TrivialDataSymmetriesForBins(proj_data_info_sptr));
+
+  if (_att_filename.empty())
+  {
+      warning("No attenuation is being used");// no attenuation map
+      _do_atten = false;
+  }
+  else
+  {
+      // read attenuation map
+      _att_coeff_sptr =
+      read_from_file<DiscretisedDensity<3,float>>
+      (_att_filename);
+      _do_atten = true;
+      const auto o1 = _density_sptr->get_origin();
+      const auto o2 = _att_coeff_sptr->get_origin();
+
+      if (o1!=o2)
+      {
+          std::cout << "image origin: "
+                    << o1.z() << " "
+                    << o1.y() << " "
+                    << o1.x() << std::endl;
+
+          std::cout << "umap origin: "
+                    << o2.z() << " "
+                    << o2.y() << " "
+                    << o2.x() << std::endl;
+
+          const auto& r1 = _density_sptr->get_index_range();
+          const auto& r2 = _att_coeff_sptr->get_index_range();
+
+          std::cout << "image z: "
+                    << r1[1].get_min_index() << " "
+                    << r1[1].get_max_index() <<" umap z: "
+                    << r2[1].get_min_index() <<" "
+                    << r2[1].get_max_index() << std::endl;
+
+          std::cout << "image y: "
+                    << r1[2].get_min_index() << " "
+                    << r1[2].get_max_index() <<" umap y: "
+                    << r2[2].get_min_index() <<" "
+                    << r2[2].get_max_index() << std::endl;
+
+          std::cout << "image x: "
+                    << r1[3].get_min_index() << " "
+                    << r1[3].get_max_index() <<" umap x: "
+                    << r2[3].get_min_index() <<" "
+                    << r2[3].get_max_index() << std::endl;
+
+          error("SPECTGPU: Attenuation coefficient image expected to match characteristics of Activity image"
+                );
+      }
+  }
 
   auto& density_cast = dynamic_cast<const VoxelsOnCartesianGrid<float>&>(*_density_sptr);
 
@@ -135,7 +194,7 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
   // Set up the SPECTGPU binary helper
   _helper.set_cuda_device_id(_cuda_device);
   _helper.set_scanner_type(proj_data_info_sptr->get_scanner_ptr()->get_type());
-  _helper.set_att(0);
+//  _helper.set_att(0);
   _helper.set_verbose(_cuda_verbosity);
   _helper.set_up();
 
@@ -204,6 +263,10 @@ BackProjectorByBinSPECTGPU::actual_back_project(DiscretisedDensity<3,float>& sti
     run_backward_projection_cuda(
                 stir_sino,
                 stir_image,
+                *_att_coeff_sptr,
+                _do_atten,
+                _sigma0,
+                _slope,
                 this->num_views,
                 this->block_dim.x,
                 this->block_dim.y,

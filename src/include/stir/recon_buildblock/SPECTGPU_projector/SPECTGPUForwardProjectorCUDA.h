@@ -9,6 +9,10 @@ START_NAMESPACE_STIR
 void run_forward_projection_cuda(
         RelatedViewgrams<float>& stir_sino,
         const DiscretisedDensity<3,float>& stir_image,
+        DiscretisedDensity<3,float>& stir_umap,
+        bool do_atten,
+        float coll_sigma0_cm,
+        float coll_slope,
         int num_views,
         int min_ax,
         int max_ax,

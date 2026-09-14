@@ -7,8 +7,12 @@
 START_NAMESPACE_STIR
 
 void run_backward_projection_cuda(
-    const RelatedViewgrams<float>& stir_sino,
-    DiscretisedDensity<3,float>& stir_image,
+        const RelatedViewgrams<float>& stir_sino,
+        DiscretisedDensity<3,float>& stir_image,
+        const DiscretisedDensity<3,float>& stir_umap,
+        bool do_atten,
+        float coll_sigma0_cm,
+        float coll_slope,
         int num_views,
         unsigned int block_x,
         unsigned int block_y,

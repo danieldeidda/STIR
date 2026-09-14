@@ -1,6 +1,8 @@
 Forward Projector parameters:=
    type := SPECTGPU
    Forward projector Using SPECTGPU Parameters :=
-
+      attenuation image filename := umap_inverted.hv
+      collimator slope := 0.01
+      collimator sigma 0(cm) := 0.07
       End Forward Projector Using SPECTGPU Parameters :=
 End:=

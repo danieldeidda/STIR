@@ -3,23 +3,21 @@
 #include <cuda_runtime.h>
 
 __global__
-void rotateKernel_pull(
+void GaussianConvolutionKernel_pull(
         const float* in_im,
         float* out_im,
         int3 image_dim,
         float3 spacing,
-        float3 origin,
-        int3 min_indeces,
-        float angle_rad);
+        float sigma0,
+        float slope);
 
 
 
 __global__
-void rotateKernel_push(
+void GaussianConvolutionKernel_push(
         const float* in_im,
         float* out_im,
         int3 image_dim,
         float3 spacing,
-        float3 origin,
-        int3 min_indeces,
-        float angle_rad);
+        float sigma0,
+        float slope);

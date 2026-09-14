@@ -43,6 +43,24 @@ class DataSymmetriesForViewSegmentNumbers;
 class ForwardProjectorByBinSPECTGPU : public RegisteredParsingObject<ForwardProjectorByBinSPECTGPU, ForwardProjectorByBin>
 {
 public:
+    void
+    set_sigma0(const float sigma0)
+    {
+        _sigma0 = sigma0;
+    }
+
+    void
+    set_slope(const float slope)
+    {
+        _slope = slope;
+    }
+
+    void
+    set_attenuation_filename(
+        const std::string& filename)
+    {
+        _att_filename = filename;
+    }
   //! Name which will be used when parsing a ForwardProjectorByBin object
   static const char* const registered_name;
 
@@ -129,6 +147,10 @@ private:
   int _cuda_device;
   bool _cuda_verbosity;
   bool _use_truncation;
+  bool _do_atten;
+  std::string _att_filename;
+  float _slope, _sigma0;
+  shared_ptr<DiscretisedDensity<3, float>> _att_coeff_sptr;
 };
 
 END_NAMESPACE_STIR

@@ -86,9 +86,7 @@ SPECTGPUHelper::~SPECTGPUHelper()
 void
 SPECTGPUHelper::set_up()
 {
-  if (_att < 0)
-    throw std::runtime_error("SPECTGPUHelper::set_up() "
-                             "emission or transmission mode (att) not set.");
+
 
 //  // Get consts
 //  _cnt_sptr = get_cnst(_scanner_type, _verbose, _devid);

@@ -33,6 +33,9 @@ ProjectorByBinPairUsingSPECTGPU::initialise_keymap()
   base_type::initialise_keymap();
   parser.add_start_key("Projector Pair Using SPECTGPU Parameters");
   parser.add_stop_key("End Projector Pair Using SPECTGPU Parameters");
+  parser.add_key("collimator slope", &_slope);
+  parser.add_key("collimator sigma 0(cm)", &_sigma0);
+  parser.add_key("attenuation image filename", &_att_filename);
   parser.add_key("verbosity", &_verbosity);
   parser.add_key("use_truncation", &_use_truncation);
 }
@@ -43,17 +46,36 @@ ProjectorByBinPairUsingSPECTGPU::set_defaults()
   base_type::set_defaults();
   this->set_verbosity(true);
   this->set_use_truncation(false);
+  this->_sigma0=-1;
+  this->_slope=-1;
 }
 
 bool
 ProjectorByBinPairUsingSPECTGPU::post_processing()
 {
-  this->set_verbosity(this->_verbosity);
-  this->set_use_truncation(this->_use_truncation);
+    this->set_verbosity(this->_verbosity);
+    this->set_use_truncation(this->_use_truncation);
 
-  if (base_type::post_processing())
-    return true;
-  return false;
+    auto fwd =
+            dynamic_pointer_cast<ForwardProjectorByBinSPECTGPU>(
+                this->forward_projector_sptr);
+
+    auto bwd =
+            dynamic_pointer_cast<BackProjectorByBinSPECTGPU>(
+                this->back_projector_sptr);
+
+    fwd->set_sigma0(_sigma0);
+    fwd->set_slope(_slope);
+    fwd->set_attenuation_filename(_att_filename);
+
+    bwd->set_sigma0(_sigma0);
+    bwd->set_slope(_slope);
+    bwd->set_attenuation_filename(_att_filename);
+
+
+    if (base_type::post_processing())
+        return true;
+    return false;
 }
 
 ProjectorByBinPairUsingSPECTGPU::ProjectorByBinPairUsingSPECTGPU()
@@ -61,6 +83,8 @@ ProjectorByBinPairUsingSPECTGPU::ProjectorByBinPairUsingSPECTGPU()
   this->forward_projector_sptr.reset(new ForwardProjectorByBinSPECTGPU);
   this->back_projector_sptr.reset(new BackProjectorByBinSPECTGPU);
   set_defaults();
+
+
 }
 
 void

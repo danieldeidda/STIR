@@ -51,6 +51,26 @@ public:
   /// Keymap
   virtual void initialise_keymap() override;
 
+
+  void
+  set_sigma0(const float sigma0)
+  {
+      _sigma0 = sigma0;
+  }
+
+  void
+  set_slope(const float slope)
+  {
+      _slope = slope;
+  }
+
+  void
+  set_attenuation_filename(
+      const std::string& filename)
+  {
+      _att_filename = filename;
+  }
+
   //! Stores all necessary geometric info
   /*!
    If necessary, set_up() can be called more than once.
@@ -88,6 +108,7 @@ public:
   }
 
 protected:
+
   virtual void actual_back_project(const RelatedViewgrams<float>&,
                                    const int min_axial_pos_num,
                                    const int max_axial_pos_num,
@@ -120,8 +141,12 @@ private:
   SPECTGPUHelper _helper;
   int _cuda_device;
   bool _cuda_verbosity;
+  bool _do_atten;
   std::vector<float> _np_sino;
   bool _use_truncation;
+  float _slope, _sigma0;
+  std::string _att_filename;
+  shared_ptr<DiscretisedDensity<3, float>> _att_coeff_sptr;
 };
 
 END_NAMESPACE_STIR

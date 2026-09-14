@@ -143,6 +143,7 @@ if (STIR_WITH_CUDA)
                 SPECTGPU_projector/SPECTGPUBackwardProjectorCUDA.cu
                 SPECTGPU_projector/SPECTGPUProjection.cu
                 SPECTGPU_projector/SPECTGPURotateAndGaussianInterpolate.cu
+                SPECTGPU_projector/SPECTGPUPSFGaussian.cu
   )
 endif()
 

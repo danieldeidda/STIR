@@ -30,8 +30,13 @@
 
 // the following is a pull operation
 __global__ void
-rotateKernel_pull(
-    const float* __restrict__ in_im, float* __restrict__ out_im, int3 dim, float3 spacing, float3 origin, int3 min_indeces, float angle_rad)
+rotateKernel_pull(const float* __restrict__ in_im,
+                  float* __restrict__ out_im,
+                  int3 dim,
+                  float3 spacing,
+                  float3 origin,
+                  int3 min_indeces,
+                  float angle_rad)
 {
   // parallelise the operation across all image voxels
   int i = threadIdx.x + blockDim.x * blockIdx.x;
@@ -71,6 +76,7 @@ rotateKernel_pull(
   float G = 0;     // accumulator variable
   float sigma = 2; // gaussian kernel sigma
 
+
   for (int dr = -3; dr <= 3; dr++)
     {
       int r = (int)roundf(r_r) + dr;          // nearest neighbour z coordinate in rotated voxel space
@@ -94,13 +100,23 @@ rotateKernel_pull(
 
               // caulculate gaussian kernel
               float g = expf(-1. * ((delta_x * delta_x) + (delta_y * delta_y) + (delta_z * delta_z)) / (2 * sigma * sigma));
+//              if(i==dim.x/2+20 && j==dim.y/2 && k==dim.z/2) {
+//                  printf("dp=%d dq=%d dr=%d g=%e\n", dp,dq,dr,g);
+//                  printf("dx=%f dy=%f dz=%f\n",
+//                         delta_x, delta_y, delta_z);
+//                  printf("Xr_z=%f\n", Xr_z);
+//                  printf("x_r=%f\n", x_r);
+//                  printf("origin.z=%f\n", origin.z);
+//                  printf("min_z=%d\n", min_indeces.z);
+//              }
+
               G += g;
             };
         };
     };
 
   // loop again but this time actually fetch the image values
-  float accumulation = 0;
+  float accumulation_im = 0;
 
   for (int dr = -3; dr <= 3; dr++)
     {
@@ -137,18 +153,24 @@ rotateKernel_pull(
               float g = expf(-1. * ((delta_x * delta_x) + (delta_y * delta_y) + (delta_z * delta_z)) / (2 * sigma * sigma));
 
               // record the weighted value from this voxel
-              accumulation += in_im[i_idx] * g / G;
+              accumulation_im += in_im[i_idx] * g / G;
+
             };
         };
     };
-
   // assign the pulled voxel values to a single voxel in the output image
-  out_im[idx] = accumulation;
+  out_im[idx] = accumulation_im;
 };
 
 // the following is the adjoint operation (push)
 __global__ void
-rotateKernel_push(const float* __restrict__ in_im, float* __restrict__ out_im, int3 dim, float3 spacing, float3 origin, int3 min_indeces, float angle_rad)
+rotateKernel_push(const float* __restrict__ in_im,
+                  float* __restrict__ out_im,
+                  int3 dim,
+                  float3 spacing,
+                  float3 origin,
+                  int3 min_indeces,
+                  float angle_rad)
 {
   // parallelise the operation across all image voxels
   int i = threadIdx.x + blockDim.x * blockIdx.x;
@@ -227,7 +249,7 @@ rotateKernel_push(const float* __restrict__ in_im, float* __restrict__ out_im, i
 //  }
 
   // loop again but this time actually fetch the image values
-//  float accumulation = 0;
+//  float accumulation_im = 0;
 
   for (int dr = -3; dr <= 3; dr++)
     {
@@ -264,7 +286,7 @@ rotateKernel_push(const float* __restrict__ in_im, float* __restrict__ out_im, i
               // Pushing the weighted counts to NN
               float g = expf(-1. * ((delta_x * delta_x) + (delta_y * delta_y) + (delta_z * delta_z)) / (2 * sigma * sigma));
               atomicAdd(&out_im[i_idx], in_im[idx] * g / G);
-            };
+          };
         };
     };
 }

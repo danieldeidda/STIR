@@ -56,7 +56,7 @@ public:
   SPECTGPUHelper()
       : _already_set_up(false),
         _devid(0),
-        _att(-1),
+//        _att(-1),
         _scanner_type(Scanner::Unknown_scanner)
   {}
 
@@ -68,7 +68,7 @@ public:
 
 
 //  /// Set emission (0) or transmission (1) - whether to exp{-result} for attenuation maps
-  void set_att(const char att) { _att = att; }
+//  void set_att(const char att) { _att = att; }
 
 //  /// Set verbosity level for CUDA output
   void set_verbose(const bool verbose) { _verbose = verbose; }
@@ -132,11 +132,9 @@ public:
   char _devid;
   shared_ptr<Cnst> _cnt_sptr;
   int _nsinos;
-  char _att;
   std::vector<int> _isub;
   bool _verbose;
   Scanner::Type _scanner_type;
-
 
   std::vector<float> _crs;
   std::vector<short> _s2c;

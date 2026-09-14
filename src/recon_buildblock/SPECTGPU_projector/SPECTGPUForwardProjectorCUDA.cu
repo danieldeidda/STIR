@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPURotateAndGaussianInterpolate.h"
+#include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUPSFGaussian.h"
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUProjection.h"
 
 START_NAMESPACE_STIR
@@ -10,6 +11,10 @@ START_NAMESPACE_STIR
 void run_forward_projection_cuda(
         RelatedViewgrams<float>& stir_sino,
         const DiscretisedDensity<3,float>& stir_image,
+        DiscretisedDensity<3,float>& stir_umap,
+        bool do_atten,
+        float coll_sigma0_cm,
+        float coll_slope,
         int num_views,
         int min_ax,
         int max_ax,
@@ -41,14 +46,24 @@ void run_forward_projection_cuda(
 
     float* dev_image;
     cudaMalloc(&dev_image, stir_image.size_all() * sizeof(float));
+
+    float* dev_umap;
     float* out_im;
     cudaMalloc(&out_im, stir_image.size_all() * sizeof(float));
-     auto& vox =
-        dynamic_cast<const VoxelsOnCartesianGrid<float>&>(stir_image);
+    float* out_umap;
 
-    array_to_device(dev_image, vox);
+    if (do_atten)
+    {
+        cudaMalloc(&out_umap, stir_image.size_all() * sizeof(float));
+        cudaMalloc(&dev_umap, stir_image.size_all() * sizeof(float));
+        array_to_device(dev_umap, stir_umap);
+    }
 
-//    array_to_device(dev_image, stir_image);
+//     auto& vox =
+//        dynamic_cast<const VoxelsOnCartesianGrid<float>&>(stir_image);
+//    array_to_device(dev_image, vox);
+
+    array_to_device(dev_image, stir_image);
 
 
     float3 spacing = make_float3(spacing_x,
@@ -78,6 +93,12 @@ void run_forward_projection_cuda(
                sino_size*sizeof(float));
 
 
+    float* blurred_im;
+    if(coll_sigma0_cm>=0 && coll_slope>=0)
+        cudaMalloc(&blurred_im, stir_image.size_all() * sizeof(float));
+
+
+
     if (vg0.size_all() != dim_ax * dim_tg)
       error("SPECTGPU: Viewgram size does not match kernel output size.");
 
@@ -102,6 +123,24 @@ void run_forward_projection_cuda(
 
 //        std::cout<<"view and angle = "<<vg.get_view_num()<<" "<<angle_rad<<std::endl;
 
+        if (do_atten)
+        {
+            rotateKernel_pull<<<cuda_grid_dim, cuda_block_dim>>>(
+                                                                   dev_umap,
+                                                                   out_umap,
+                                                                   image_dim,
+                                                                   spacing,
+                                                                   origin,
+                                                                   min_indeces,
+                                                                   angle_rad);
+
+            cudaDeviceSynchronize();
+
+            auto err0 = cudaGetLastError();
+            if (err0 != cudaSuccess)
+                error(cudaGetErrorString(err0));
+        }
+
         rotateKernel_pull<<<cuda_grid_dim, cuda_block_dim>>>(
                                                                dev_image,
                                                                out_im,
@@ -117,29 +156,82 @@ void run_forward_projection_cuda(
         if (err != cudaSuccess)
             error(cudaGetErrorString(err));
 
-        //array_to_device(dev_sino, vg); don't need this asthe viewgrams need to be filled by the kernel
-        //so need to set everything to zero
 
-        cudaMemset(dev_sino,
-                   0,
-                   sino_size*sizeof(float));
+        if (coll_sigma0_cm>=0 && coll_slope>=0)
+        {
 
-        forwardKernel<<<cuda_grid_dim, cuda_block_dim>>>(
-                                                           out_im,
-                                                           dev_sino,
-                                                           image_dim);
+//            cudaMalloc(&dev_umap, stir_image.size_all() * sizeof(float));
+//            array_to_device(blurr_im, stir_umap);
+            GaussianConvolutionKernel_pull<<<cuda_grid_dim, cuda_block_dim>>>(
+                                                                                out_im,
+                                                                                blurred_im,
+                                                                                image_dim,
+                                                                                spacing,
+                                                                                coll_sigma0_cm,
+                                                                                coll_slope);
 
-        cudaDeviceSynchronize();
+            cudaDeviceSynchronize();
 
-        err = cudaGetLastError();
-        if (err != cudaSuccess)
-            error(cudaGetErrorString(err));
+            auto errpsf_f0 = cudaGetLastError();
+            if (errpsf_f0 != cudaSuccess)
+                error(cudaGetErrorString(errpsf_f0));
+
+            cudaMemset(dev_sino,
+                       0,
+                       sino_size*sizeof(float));
+
+            forwardKernel<<<cuda_grid_dim, cuda_block_dim>>>(
+                                                               blurred_im,
+                                                               out_umap,
+                                                               dev_sino,
+                                                               image_dim,
+                                                               spacing,
+                                                               do_atten);
+
+            cudaDeviceSynchronize();
+
+            auto errpsf_f = cudaGetLastError();
+            if (errpsf_f != cudaSuccess)
+                error(cudaGetErrorString(errpsf_f));
+        }
+        else
+        {
+
+            //array_to_device(dev_sino, vg); don't need this asthe viewgrams need to be filled by the kernel
+            //so need to set everything to zero
+
+            cudaMemset(dev_sino,
+                       0,
+                       sino_size*sizeof(float));
+
+            forwardKernel<<<cuda_grid_dim, cuda_block_dim>>>(
+                                                               out_im,
+                                                               out_umap,
+                                                               dev_sino,
+                                                               image_dim,
+                                                               spacing,
+                                                               do_atten);
+
+            cudaDeviceSynchronize();
+
+            err = cudaGetLastError();
+            if (err != cudaSuccess)
+                error(cudaGetErrorString(err));
+        }
 
         array_to_host(vg, dev_sino);
 
       }
     cudaFree(dev_image);
     cudaFree(out_im);
+
+    if(coll_sigma0_cm>=0 && coll_slope>=0)
+        cudaFree(blurred_im);
+    if (do_atten)
+    {
+        cudaFree(dev_umap);
+        cudaFree(out_umap);
+    }
     cudaFree(dev_sino);
       //  cudaMalloc(&cuda_image, stir_image_sptr->size_all() * sizeof(elemT));
     //  array_to_device(cuda_image, *stir_image_sptr);

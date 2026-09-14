@@ -4,13 +4,18 @@
 
 __global__
 void forwardKernel(
-    const float* image,
-    float* sino,
-    int3 image_dim);
+        const float* in_image,
+        const float* in_umap,
+        float* sino,
+        int3 image_dim,
+        float3 spacing,
+        bool do_atten);
 
 __global__
 void backwardKernel(
-        const float* sino,
+        const float* in_sino,
         float* image,
+        const float* in_umap,
         int3 image_di,
-        float3 spacing);
+        float3 spacing,
+        bool do_atten);
