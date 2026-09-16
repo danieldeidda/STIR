@@ -83,11 +83,11 @@ public:
 //  void back_project(const ProjData&, int subset_num = 0, int num_subsets = 1) override;
 
   /// Get output
-//  virtual void get_output(DiscretisedDensity<3, float>&) const override;
+  virtual void get_output(DiscretisedDensity<3, float>&) const override;
 
   /*! \brief tell the back projector to start accumulating into a new target.
     This function has to be called before any back-projection is initiated.*/
-//  virtual void start_accumulating_in_new_target() override;
+  virtual void start_accumulating_in_new_target() override;
 
   /// Set verbosity
   void set_verbosity(const bool verbosity) { _cuda_verbosity = verbosity; }
@@ -146,6 +146,9 @@ private:
   bool _use_truncation;
   float _slope, _sigma0;
   std::string _att_filename;
+  float* dev_image;
+  float* dev_umap;
+
   shared_ptr<DiscretisedDensity<3, float>> _att_coeff_sptr;
 };
 

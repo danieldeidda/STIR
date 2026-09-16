@@ -11,11 +11,13 @@
 
   \author Daniel Deidda
   \author Hei Yin Jowett Chan
+  \author Wei Huanzhe
 
 */
 /*
     Copyright (C) 2026, National Physical Laboratory
     Copyright (C) 2026, Convergent Imaging Solutions
+    Copyright (C) 2026, King's College London
     This file is part of STIR.
 
     SPDX-License-Identifier: Apache-2.0

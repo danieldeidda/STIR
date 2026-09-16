@@ -1,3 +1,28 @@
+/*!
+
+  \file
+  \ingroup projection
+  \ingroup SPECTGPU
+
+  \brief implementations for cuda kernel for rotating projector with gaussian interpolation
+  a la Wallis et al 1997,TMI, doi: 10.1109/42.552061.
+
+  \author Daniel Deidda
+  \author Hei Yin Jowett Chan
+  \author Wei Huanzhe
+
+*/
+/*
+    Copyright (C) 2026, National Physical Laboratory
+    Copyright (C) 2026, Convergent Imaging Solutions
+    Copyright (C) 2026, King's College London
+    This file is part of STIR.
+
+    SPDX-License-Identifier: Apache-2.0
+
+    See STIR/LICENSE.txt for details
+*/
+
 #pragma once
 
 #include <cuda_runtime.h>

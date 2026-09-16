@@ -1,4 +1,5 @@
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUForwardProjectorCUDA.h"
+
 #include "stir/VoxelsOnCartesianGrid.h"
 #include <cuda_runtime.h>
 
@@ -10,8 +11,10 @@ START_NAMESPACE_STIR
 
 void run_forward_projection_cuda(
         RelatedViewgrams<float>& stir_sino,
-        const DiscretisedDensity<3,float>& stir_image,
-        DiscretisedDensity<3,float>& stir_umap,
+        float* dev_image,
+        const float* dev_umap,
+//        const DiscretisedDensity<3,float>& stir_image,
+//        DiscretisedDensity<3,float>& stir_umap,
         bool do_atten,
         float coll_sigma0_cm,
         float coll_slope,
@@ -44,26 +47,26 @@ void run_forward_projection_cuda(
     dim3 cuda_grid_dim(grid_x, grid_y, grid_z);
 //    viewgrams = _projected_data_sptr->get_related_viewgrams(stir_sino.get_basic_view_segment_num(), _symmetries_sptr);
 
-    float* dev_image;
-    cudaMalloc(&dev_image, stir_image.size_all() * sizeof(float));
+//    float* dev_image;
+//    cudaMalloc(&dev_image, stir_image.size_all() * sizeof(float));
 
-    float* dev_umap;
+//    float* dev_umap;
     float* out_im;
-    cudaMalloc(&out_im, stir_image.size_all() * sizeof(float));
+    cudaMalloc(&out_im, dim_x*dim_y*dim_z * sizeof(float));
     float* out_umap;
 
     if (do_atten)
     {
-        cudaMalloc(&out_umap, stir_image.size_all() * sizeof(float));
-        cudaMalloc(&dev_umap, stir_image.size_all() * sizeof(float));
-        array_to_device(dev_umap, stir_umap);
+        cudaMalloc(&out_umap, dim_x*dim_y*dim_z * sizeof(float));
+//        cudaMalloc(&dev_umap, stir_image.size_all() * sizeof(float));
+//        array_to_device(dev_umap, stir_umap);
     }
 
 //     auto& vox =
 //        dynamic_cast<const VoxelsOnCartesianGrid<float>&>(stir_image);
 //    array_to_device(dev_image, vox);
 
-    array_to_device(dev_image, stir_image);
+//    array_to_device(dev_image, stir_image);
 
 
     float3 spacing = make_float3(spacing_x,
@@ -95,7 +98,7 @@ void run_forward_projection_cuda(
 
     float* blurred_im;
     if(coll_sigma0_cm>=0 && coll_slope>=0)
-        cudaMalloc(&blurred_im, stir_image.size_all() * sizeof(float));
+        cudaMalloc(&blurred_im, dim_x*dim_y*dim_z * sizeof(float));
 
 
 
@@ -222,14 +225,14 @@ void run_forward_projection_cuda(
         array_to_host(vg, dev_sino);
 
       }
-    cudaFree(dev_image);
+//    cudaFree(dev_image);
     cudaFree(out_im);
 
     if(coll_sigma0_cm>=0 && coll_slope>=0)
         cudaFree(blurred_im);
     if (do_atten)
     {
-        cudaFree(dev_umap);
+//        cudaFree(dev_umap);
         cudaFree(out_umap);
     }
     cudaFree(dev_sino);

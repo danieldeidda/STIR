@@ -5,11 +5,32 @@
 #include "stir/DiscretisedDensity.h"
 
 START_NAMESPACE_STIR
+// BPBuffers.h
+void allocate_im_buffers(
+    float*& dev_image,
+    float*& dev_umap,
+    const DiscretisedDensity<3,float>& image,
+    const DiscretisedDensity<3,float>& umap,
+    bool do_atten);
+
+void free_im_buffers(float *dev_image,
+    float *dev_umap, bool do_atten);
+
+void copy_im_to_stir(
+    DiscretisedDensity<3,float>& image,
+    const float* dev_image);
+
+void copy_stir_im_to_dev(
+    float* dev_image,
+    const DiscretisedDensity<3,float>& image);
+
 
 void run_backward_projection_cuda(
         const RelatedViewgrams<float>& stir_sino,
-        DiscretisedDensity<3,float>& stir_image,
-        const DiscretisedDensity<3,float>& stir_umap,
+        float* dev_image,
+        const float* dev_umap,
+//        DiscretisedDensity<3,float>& stir_image,
+//        const DiscretisedDensity<3,float>& stir_umap,
         bool do_atten,
         float coll_sigma0_cm,
         float coll_slope,

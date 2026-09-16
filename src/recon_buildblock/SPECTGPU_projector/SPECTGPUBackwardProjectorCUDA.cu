@@ -8,10 +8,62 @@
 
 START_NAMESPACE_STIR
 
+
+void allocate_im_buffers(
+    float*& dev_image,
+    float*& dev_umap,
+    const DiscretisedDensity<3,float>& image,
+    const DiscretisedDensity<3,float>& umap,
+    bool do_atten)
+{
+        cudaMalloc((void**)&dev_image,
+                   image.size_all() * sizeof(float));
+
+        cudaMemset(dev_image,
+                   0,
+                   image.size_all() * sizeof(float));
+        if (do_atten)
+        {
+            cudaMalloc((void**)&dev_umap,
+                       umap.size_all() * sizeof(float));
+
+            cudaMemset(dev_umap,
+                       0,
+                       umap.size_all() * sizeof(float));
+        }
+
+}
+
+void free_im_buffers(
+        float* dev_image,
+        float* dev_umap,
+        bool do_atten)
+{
+    cudaFree(dev_image);
+    if (do_atten)
+        cudaFree(dev_umap);
+}
+
+void copy_im_to_stir(
+    DiscretisedDensity<3,float>& image,
+    const float* dev_image)
+{
+    array_to_host(image, dev_image);
+}
+
+void copy_stir_im_to_dev(
+    float* dev_image,
+    const DiscretisedDensity<3,float>& image)
+{
+    array_to_device(dev_image, image);
+}
+
 void run_backward_projection_cuda(
         const RelatedViewgrams<float>& stir_sino,
-        DiscretisedDensity<3,float>& stir_image,
-        const DiscretisedDensity<3,float>& stir_umap,
+        float* dev_image,
+        const float* dev_umap,
+//        DiscretisedDensity<3,float>& stir_image,
+//        const DiscretisedDensity<3,float>& stir_umap,
         bool do_atten,
         float coll_sigma0_cm,
         float coll_slope,
@@ -46,10 +98,10 @@ void run_backward_projection_cuda(
         grid_y,
         grid_z);
 
-    float* dev_image;
-    cudaMalloc(
-        &dev_image,
-        stir_image.size_all() * sizeof(float));
+//    float* dev_image;
+//    cudaMalloc(
+//        &dev_image,
+//        stir_image.size_all() * sizeof(float));
 
 
 //    cudaMemset(
@@ -57,26 +109,26 @@ void run_backward_projection_cuda(
 //        0,
 //        stir_image.size_all() * sizeof(float));
 //    this is different than Forward as STIR calls actual_backproject() for every view
-    array_to_device(dev_image, stir_image);
+//    array_to_device(dev_image, stir_image);
 
     float* rotated_im;
     cudaMalloc(
         &rotated_im,
-        stir_image.size_all() * sizeof(float));
+        dim_x*dim_y*dim_z * sizeof(float));
 
     float* rotated_umap;
-    float* dev_umap;
+//    float* dev_umap;
 
     if (do_atten)
     {
-        cudaMalloc(
-                    &dev_umap,
-                    stir_image.size_all() * sizeof(float));
-        array_to_device(dev_umap, stir_umap);
+//        cudaMalloc(
+//                    &dev_umap,
+//                    stir_image.size_all() * sizeof(float));
+//        array_to_device(dev_umap, stir_umap);
 
         cudaMalloc(
             &rotated_umap,
-            stir_image.size_all() * sizeof(float));
+            dim_x*dim_y*dim_z * sizeof(float));
 //        array_to_device(rotated_umap, stir_umap);
     }
 
@@ -97,7 +149,7 @@ void run_backward_projection_cuda(
 
     float* blurred_im;
     if(coll_sigma0_cm>=0 && coll_slope>=0)
-        cudaMalloc(&blurred_im, stir_image.size_all() * sizeof(float));
+        cudaMalloc(&blurred_im, dim_x*dim_y*dim_z * sizeof(float));
 
 
     auto vg_iter = stir_sino.begin();
@@ -141,7 +193,7 @@ void run_backward_projection_cuda(
 
         cudaMemset(rotated_im,
                    0,
-                   stir_image.size_all() * sizeof(float));
+                   dim_x*dim_y*dim_z * sizeof(float));
 
         //Actual BP
         backwardKernel<<<cuda_grid_dim,cuda_block_dim>>>(
@@ -165,7 +217,7 @@ void run_backward_projection_cuda(
             cudaMemset(
                 blurred_im,
                 0,
-                stir_image.size_all() * sizeof(float));
+                dim_x*dim_y*dim_z * sizeof(float));
 
             GaussianConvolutionKernel_push<<<cuda_grid_dim, cuda_block_dim>>>(
                                                                                 rotated_im,
@@ -217,18 +269,18 @@ void run_backward_projection_cuda(
                 error(cudaGetErrorString(err1));
         }
 
-    array_to_host(stir_image, dev_image);
+//    array_to_host(stir_image, dev_image);
     cudaFree(dev_sino);
 
     cudaFree(rotated_im);
     if(coll_sigma0_cm>=0 && coll_slope>=0)
         cudaFree(blurred_im);
-    cudaFree(dev_image);
+//    cudaFree(dev_image);
 
     if (do_atten)
     {
         cudaFree(rotated_umap);
-        cudaFree(dev_umap);
+//        cudaFree(dev_umap);
     }
 }
 

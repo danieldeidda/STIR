@@ -30,6 +30,7 @@
 #include "stir/error.h"
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUBackwardProjectorCUDA.h"
 #include "stir/IO/read_from_file.h"
+#include "stir/cuda_utilities.h"
 
 START_NAMESPACE_STIR
 
@@ -41,7 +42,9 @@ BackProjectorByBinSPECTGPU::BackProjectorByBinSPECTGPU()
       _cuda_verbosity(true),
       _use_truncation(false),
       _slope(-1),
-      _sigma0(-1)
+      _sigma0(-1),
+      dev_image(nullptr),
+      dev_umap(nullptr)
 {
   this->_already_set_up = false;
 }
@@ -217,10 +220,19 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
 //                      const int);
 //}
 
-//void
-//BackProjectorByBinSPECTGPU::get_output(DiscretisedDensity<3, float>& density) const
-//{
-  
+void
+BackProjectorByBinSPECTGPU::get_output(
+    DiscretisedDensity<3,float>& density) const
+{
+    copy_im_to_stir(
+        density,
+        dev_image);
+
+    free_im_buffers(
+                dev_image,
+                dev_umap,
+                _do_atten);
+}
 //  std::vector<float> sino = _helper.create_SPECTGPU_sinogram();
 
 //  // --------------------------------------------------------------- //
@@ -243,14 +255,27 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
 //    truncate_rim(density, 17);
 //}
 
-//void
-//BackProjectorByBinSPECTGPU::start_accumulating_in_new_target()
-//{
-//  // Call base level
-//  BackProjectorByBin::start_accumulating_in_new_target();
-//  // Also reset the SPECTGPU sinogram
+void
+BackProjectorByBinSPECTGPU::start_accumulating_in_new_target()
+{
+  // Call base level
+  BackProjectorByBin::start_accumulating_in_new_target();
+
+  allocate_im_buffers(
+      this->dev_image,
+      this->dev_umap,
+      *_density_sptr,
+      *_att_coeff_sptr,
+      _do_atten);
+
+  if (_do_atten)
+      copy_stir_im_to_dev(dev_umap, *_att_coeff_sptr);
+
+//  copy_stir_to_dev(dev_image, *_att_coeff_sptr); is zero at the start
+
+  // Also reset the SPECTGPU sinogram
 //  _np_sino = _helper.create_SPECTGPU_sinogram();
-//}
+}
 
 void
 BackProjectorByBinSPECTGPU::actual_back_project(DiscretisedDensity<3,float>& stir_image,
@@ -262,8 +287,8 @@ BackProjectorByBinSPECTGPU::actual_back_project(DiscretisedDensity<3,float>& sti
 {
     run_backward_projection_cuda(
                 stir_sino,
-                stir_image,
-                *_att_coeff_sptr,
+                dev_image,
+                dev_umap,
                 _do_atten,
                 _sigma0,
                 _slope,

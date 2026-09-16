@@ -4,11 +4,9 @@
   \ingroup projection
   \ingroup SPECTGPU
 
-  \brief implementations for cuda kernel for rotating projector with gaussian interpolation
-  a la Wallis et al 1997,TMI, doi: 10.1109/42.552061.
+  \brief implementations for cuda kernel of depth dependendent PSF
 
   \author Daniel Deidda
-
 
 */
 /*
@@ -19,6 +17,7 @@
 
     See STIR/LICENSE.txt for details
 */
+
 
 #include "stir/cuda_utilities.h"
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUPSFGaussian.h"

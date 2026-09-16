@@ -150,6 +150,8 @@ private:
   bool _do_atten;
   std::string _att_filename;
   float _slope, _sigma0;
+  float* dev_image;
+  float* dev_umap;
   shared_ptr<DiscretisedDensity<3, float>> _att_coeff_sptr;
 };
 

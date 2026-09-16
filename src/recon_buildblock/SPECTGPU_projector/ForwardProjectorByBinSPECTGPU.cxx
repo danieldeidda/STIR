@@ -32,6 +32,7 @@
 #include "stir/IO/read_from_file.h"
 
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUForwardProjectorCUDA.h"
+#include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUBackwardProjectorCUDA.h"
 
 START_NAMESPACE_STIR
 
@@ -43,13 +44,13 @@ ForwardProjectorByBinSPECTGPU::ForwardProjectorByBinSPECTGPU()
       _cuda_verbosity(true),
       _use_truncation(false),
       _slope(-1),
-      _sigma0(-1)
+      _sigma0(-1),
+      dev_image(nullptr),
+      dev_umap(nullptr)
 {
   this->_already_set_up = false;
 }
 
-ForwardProjectorByBinSPECTGPU::~ForwardProjectorByBinSPECTGPU()
-{}
 
 void
 ForwardProjectorByBinSPECTGPU::initialise_keymap()
@@ -224,8 +225,8 @@ ForwardProjectorByBinSPECTGPU::actual_forward_project(
 {
     run_forward_projection_cuda(
                 stir_sino,
-                stir_image,
-                *_att_coeff_sptr,
+                this->dev_image,
+                this->dev_umap,
                 _do_atten,
                 _sigma0,
                 _slope,
@@ -269,25 +270,29 @@ ForwardProjectorByBinSPECTGPU::actual_forward_project(
                 min_tg,
                 max_tg);
 }
-//      if (min_axial_pos_num != _proj_data_info_sptr->get_min_axial_pos_num() ||
-//  //         ... )
-//  //       error();
-////for all views in relateViewgram call the kernels
-
-//  viewgrams = _projected_data_sptr->get_related_viewgrams(viewgrams.get_basic_view_segment_num(), _symmetries_sptr);
-
-//  for (auto view=0; view<viewgrams.get_num_viewgrams(),view++)
-//  {
-//      cudaMalloc(&this->cuda_image, stir_image_sptr->size_all() * sizeof(elemT));
-//  }
-  //  cudaMalloc(&this->cuda_image, stir_image_sptr->size_all() * sizeof(elemT));
-//  array_to_device(this->cuda_image, *stir_image_sptr);
-//}
 
 void
 ForwardProjectorByBinSPECTGPU::set_input(const DiscretisedDensity<3, float>& density)
 {
   ForwardProjectorByBin::set_input(density);
+
+  if (dev_image)
+  {
+      free_im_buffers(this->dev_image,this->dev_umap, this->_do_atten);
+      dev_image = nullptr;
+      dev_umap = nullptr;
+  }
+
+  allocate_im_buffers(
+      this->dev_image,
+      this->dev_umap,
+      *_density_sptr,
+      *_att_coeff_sptr,
+      _do_atten);
+
+  if (_do_atten)
+      copy_stir_im_to_dev(dev_umap, *_att_coeff_sptr);
+  copy_stir_im_to_dev(dev_image, density);
 
   // Before forward projection, we enforce a truncation outside of the FOV.
   // This is because the SPECTGPU FOV is smaller than the STIR FOV and this
@@ -306,18 +311,12 @@ ForwardProjectorByBinSPECTGPU::set_input(const DiscretisedDensity<3, float>& den
   //   Forward projection
   // --------------------------------------------------------------- //
 
-//  std::vector<float> sino = _helper.create_SPECTGPU_sinogram();
-//  _helper.forward_project(sino, np_vec);
-
-//  std::vector<float> sino = _helper.create_SPECTGPU_sinogram();
-  
-
-  // --------------------------------------------------------------- //
-  //   SPECTGPU -> STIR projection data conversion
-  // --------------------------------------------------------------- //
-
-//  _helper.convert_proj_data_SPECTGPU_to_stir(*_projected_data_sptr, sino);
 
 }
 
+ForwardProjectorByBinSPECTGPU::~ForwardProjectorByBinSPECTGPU()
+{
+    if (dev_image)
+        free_im_buffers(this->dev_image, this->dev_umap, this->_do_atten);
+}
 END_NAMESPACE_STIR

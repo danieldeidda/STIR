@@ -10,6 +10,8 @@
   a la Wallis et al 1997,TMI, doi: 10.1109/42.552061.
 
   \author Daniel Deidda
+  \author David Roddy
+  \author Catherine Buck
 
 */
 /*
