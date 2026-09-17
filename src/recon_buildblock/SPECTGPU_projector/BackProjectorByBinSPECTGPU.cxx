@@ -153,9 +153,9 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
   float ax_spacing = proj_data_info_sptr->get_scanner_sptr()->get_ring_spacing();
 //    std::cout<<bin_size<<std::endl;
   if (dim_ax != this->dim_z ||
-      this->spacing_z != ax_spacing ||
+      std::fabs(this->spacing_z - ax_spacing) > 1e-5f ||
       dim_tg != this->dim_x ||
-      this->spacing_x != tg_spacing)
+      std::fabs(this->spacing_x - tg_spacing> 1e-5f) )
   {
       error(
           "SPECTGPU: expected axial and tangential dimensions/spacings "

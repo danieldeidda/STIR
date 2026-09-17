@@ -157,9 +157,9 @@ ForwardProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj
 //    }
 //    }
     if (dim_ax != this->dim_z ||
-        this->spacing_z != ax_spacing ||
+        std::fabs(this->spacing_z - ax_spacing) > 1e-5f ||
         dim_tg != this->dim_x ||
-        this->spacing_x != tg_spacing)
+        std::fabs(this->spacing_x - tg_spacing> 1e-5f) )
     {
         error(
             "SPECTGPU: expected axial and tangential dimensions/spacings "
