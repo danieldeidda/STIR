@@ -31,6 +31,7 @@
 #include "stir/numerics/overlap_interpolate.h"
 #include <typeinfo>
 #include "stir/warning.h"
+#include "stir/format.h"
 
 START_NAMESPACE_STIR
 ArcCorrection::ArcCorrection()
@@ -71,8 +72,11 @@ ArcCorrection::set_up(const shared_ptr<const ProjDataInfo>& noarc_corr_proj_data
       if (dynamic_cast<ProjDataInfoCylindricalArcCorr const*>(noarc_corr_proj_data_info_sptr.get()) != 0)
         warning("ArcCorrection called with arc-corrected proj_data_info");
       else
-        warning("ArcCorrection called with proj_data_info of the wrong type:\n\t%s",
-                typeid(*noarc_corr_proj_data_info_sptr).name());
+        {
+          const auto& noarc_corr_proj_data_info = *noarc_corr_proj_data_info_sptr;
+          warning(
+              format("ArcCorrection called with proj_data_info of the wrong type: {}", typeid(noarc_corr_proj_data_info).name()));
+        }
       return Succeeded::no;
     }
 
@@ -99,7 +103,8 @@ ArcCorrection::set_up(const shared_ptr<const ProjDataInfo>& noarc_corr_proj_data
                                                                          min_ring_diff,
                                                                          max_ring_diff,
                                                                          noarc_corr_proj_data_info_sptr->get_num_views(),
-                                                                         num_arccorrected_tangential_poss));
+                                                                         num_arccorrected_tangential_poss,
+                                                                         noarc_corr_proj_data_info_sptr->get_tof_mash_factor()));
 
   tangential_sampling = get_arc_corrected_proj_data_info().get_tangential_sampling();
 

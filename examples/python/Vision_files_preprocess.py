@@ -60,10 +60,10 @@ import os, re, argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import stir
-import stirextra
 
 
 def process_files(prompts_header_filename,
+    file_prefix = '',
     mu_map_header = 'umap_00.h33', # the *.h33 header
     randoms_data_filename = 'smoothed_rand_00.s',
     scatter_2D_header_filename = 'scat_00_00.s.hdr',
@@ -98,7 +98,7 @@ def process_files(prompts_header_filename,
     # header-name for prompts as we don't want to overwrite the Siemens header
     prompts_header_to_read_withSTIR = prompts_header_filename[:-6] + '_readwSTIR.s.hdr'
     # STIR writes the (DOI-adapted) prompts out to a STIR-file:
-    prompts_filename_STIR_corr_DOI = 'prompts.hs'
+    prompts_filename_STIR_corr_DOI = file_prefix + 'prompts.hs'
     # STIR writes a non-TOF sinogram, name:
     nonTOF_template_sinogram_name = 'template_nonTOF.hs'
     # header-name for attenuation correction factors as we don't want to overwrite the Siemens header
@@ -106,23 +106,23 @@ def process_files(prompts_header_filename,
     # header-name for randoms as we don't want to overwrite the Siemens header
     norm_sino_to_read_withSTIR = norm_sino_data_filename[:-2] + '_readwSTIR.s.hdr'
     # STIR writes the DOI-adapted, negative corrected norm-sino to
-    norm_filename_fSTIR = 'norm_sino_fSTIR.hs'
+    norm_filename_fSTIR = file_prefix + 'norm_sino_fSTIR.hs'
     # STIR writes the DOI-adapted detection efficiencies to
-    det_effs_filename_fSIRF = 'detection_efficiencies_forSIRF.hs'
+    det_effs_filename_fSIRF = file_prefix + 'detection_efficiencies_forSIRF.hs'
     # header-name for randoms as we don't want to overwrite the Siemens header
     randoms_header_to_read_withSTIR = randoms_data_filename[:-2] + '_readwSTIR.s.hdr'
     # header-name for randoms as we don't want to overwrite the Siemens header
     scatter_2D_header_to_read_withSTIR = scatter_2D_header_filename[:-6] + '_readwSTIR.s.hdr'
     # STIR writes the (DOI-adapted) randoms to
-    randoms_adapted_DOI_filename = randoms_data_filename[:-2] + '_fSTIR.hs'
+    randoms_adapted_DOI_filename = file_prefix + randoms_data_filename[:-2] + '_fSTIR.hs'
     # STIR writes the (DOI-adapted), iSSRBd, unnormalized scatter to
-    scatter_3D_unnorm_filename = 'scatter_3D_unnormalized.hs'
+    scatter_3D_unnorm_filename = file_prefix + 'scatter_3D_unnormalized.hs'
     # STIR writes the additive term (that's normalized scatter + normalized randoms, attenuation corrected) to:
-    additive_term_filename_fSTIR = 'additive_term.hs'
+    additive_term_filename_fSTIR = file_prefix + 'additive_term.hs'
     # STIR writes the multiplicative term (that's norm_sino * attenuation_CORRECTION_factors) to:
-    multi_term_filename_fSTIR = 'mult_factors_forSTIR.hs'
+    multi_term_filename_fSTIR = file_prefix + 'mult_factors_forSTIR.hs'
     # STIR writes the multiplicative term for SIRF (that's detection_efficiency_sino * attenuation_factors) to:
-    multi_term_filename_fSIRF = 'mult_factors_forSIRF.hs'
+    multi_term_filename_fSIRF = file_prefix + 'mult_factors_forSIRF.hs'
 
     #%%
     try:
@@ -182,12 +182,23 @@ def process_files(prompts_header_filename,
 
     #### now let's read it from file and plot to see if it worked
     mu_map = stir.FloatVoxelsOnCartesianGrid.read_from_file(mu_map_header[:-3]+'hv')
-    mu_map_arr = stirextra.to_numpy(mu_map)
+    mu_map.write_to_file(os.path.join(STIR_output_folder, file_prefix + 'mu_map.hv'))
+    mu_map_arr = mu_map.as_array()
 
     plt.figure()
-    plot_2d_image([1,1,1],mu_map_arr[mu_map_arr.shape[0]//2,:,:],'mu-map')
-    plt.savefig(os.path.join(STIR_output_folder,'mu_map.png'), transparent=False, facecolor='w')
+    plot_2d_image([1,2,1],mu_map_arr[mu_map_arr.shape[0]//2,:,:],'mu-map', cmap='Greys_r')
+    plot_2d_image([1,2,2],mu_map_arr[:,mu_map_arr.shape[1]//2,:],'mu-map', cmap='Greys_r')
+    plt.savefig(os.path.join(STIR_output_folder, file_prefix + 'mu_map.png'), transparent=False, facecolor='w')
     plt.close()
+
+#%%
+    ###################### UNI 1 image ############################
+    ## to get a uniform 1 image for initialising, use mu-map
+    ## This is important to match Siemens Image dimensions!!
+
+    uni1 = mu_map.get_empty_copy()
+    uni1.fill(1)
+    uni1.write_to_file(os.path.join(STIR_output_folder, file_prefix + 'uni1_img.hv'))
 
 
     # %%
@@ -205,7 +216,7 @@ def process_files(prompts_header_filename,
     ## after comparing e7tools and STIR forward projections, we've found out we have to change
     ## the crystal depth of interaction (DOI) from 7mm to 10mm to minimize the differences.
     if apply_DOI_adaption: DOI_adaption(norm_sino, 10)
-    norm_sino_arr = stirextra.to_numpy(norm_sino)
+    norm_sino_arr = norm_sino.as_array()
 
     ##### in case there were bad miniblocks during your measurement, the norm-file
     ##### might contain negative values. We'll set them to a very high value here, such
@@ -262,7 +273,7 @@ def process_files(prompts_header_filename,
     randoms = stir.ProjData.read_from_file(randoms_header_to_read_withSTIR)
     if apply_DOI_adaption: DOI_adaption(randoms, 10)
     randoms.write_to_file(os.path.join(STIR_output_folder,randoms_adapted_DOI_filename))
-    randoms_arr = stirextra.to_numpy(randoms)
+    randoms_arr = randoms.as_array()
 
     for i in range(33):
         plt.figure()
@@ -291,7 +302,7 @@ def process_files(prompts_header_filename,
 
     #%%
     # plot to see if it worked
-    scatter_3D_norm_arr = stirextra.to_numpy(scatter_3D_normalized)
+    scatter_3D_norm_arr = scatter_3D_normalized.as_array()
     for i in range(33):
         plt.figure()
         plot_2d_image([1,1,1],scatter_3D_norm_arr[i, central_slice,:,:],'scatter, normalized, TOF bin {}'.format(i))
@@ -306,7 +317,7 @@ def process_files(prompts_header_filename,
 
     scatter_3D_unnormalized.write_to_file(os.path.join(STIR_output_folder,scatter_3D_unnorm_filename))
     #%%
-    scatter_3D_unnormalized_arr = stirextra.to_numpy(scatter_3D_unnormalized)
+    scatter_3D_unnormalized_arr = scatter_3D_unnormalized.as_array()
     for i in range(33):
         plt.figure()
         plot_2d_image([1,1,1],scatter_3D_unnormalized_arr[i, central_slice,:,:],'scatter, unnormalized, TOF bin {}'.format(i))
@@ -347,7 +358,7 @@ def process_files(prompts_header_filename,
     #%%
     #### expand to TOF as normalization data is TOF
     acf_sino = stir.ProjDataInMemory(prompts_from_e7)
-    ai_arr = stirextra.to_numpy(acf_sino_nonTOF)
+    ai_arr = acf_sino_nonTOF.as_array()
     expanded_arr = np.repeat(ai_arr, 33, axis=0)
     acf_sino.fill(expanded_arr.flat)
 
@@ -368,7 +379,7 @@ def process_files(prompts_header_filename,
 
     #%%
     # let's see what it looks like
-    additive_term_arr = stirextra.to_numpy(add_sino)
+    additive_term_arr = add_sino.as_array()
 
     for i in range(33):
         plt.figure()
@@ -410,8 +421,8 @@ def process_files(prompts_header_filename,
     #%%
     #### PLOT ADDITIVE TERM
     #### draw line-profiles to check if all's correct
-    prompts_precorr_arr = stirextra.to_numpy(prompts_precorr_f_multi_fact)
-    additive_term_arr = stirextra.to_numpy(add_sino)
+    prompts_precorr_arr = prompts_precorr_f_multi_fact.as_array()
+    additive_term_arr = add_sino.as_array()
 
     _, ax = plt.subplots(figsize = (8,6))
 
@@ -433,7 +444,7 @@ def process_files(prompts_header_filename,
     # %%
     #### PLOT BACKGROUND TERM
     #### draw line-profiles to check if all's correct
-    prompts_arr = stirextra.to_numpy(prompts_from_e7)
+    prompts_arr = prompts_from_e7.as_array()
     BG_arr = scatter_3D_unnormalized_arr + randoms_arr
 
     #%%
@@ -472,6 +483,15 @@ def DOI_adaption(projdata, DOI_new):
     DOI = proj_info.get_scanner().get_average_depth_of_interaction()
     print('New Depth of interaction:', DOI)
 
+def view_offset_adaption(projdata, view_offset):
+    proj_info = projdata.get_proj_data_info()
+
+    VO = proj_info.get_scanner().get_intrinsic_azimuthal_tilt()
+    print('Current view offset (rad):', VO)
+    proj_info.get_scanner().set_intrinsic_azimuthal_tilt(view_offset)
+    VO = proj_info.get_scanner().get_intrinsic_azimuthal_tilt()
+    print('New view offset (rad):', VO)
+    
 def check_if_compressed(header_filename):
     with open(header_filename) as f:
         data = f.read()
@@ -609,6 +629,7 @@ if __name__ == '__main__':
                     prog='Vision_files_preprocess.py',
                     description='Converts e7tools sinogram files for the Vision into sinogram files that can be read by STIR')
     parser.add_argument('--prompts_filename_inclPath', required=True, help="The filename of the prompts file, including path")
+    parser.add_argument('--file_prefix', default='', help="A prefix added to all output files")
     parser.add_argument('--mu_map_header', default='umap_00.h33', help="The filename of the mu-map header")
     parser.add_argument('--randoms_data_filename', default='smoothed_rand_00.s', help="The filename of the randoms data")
     parser.add_argument('--scatter_2D_header_filename', default='scat_00_00.s.hdr', help="The filename of the 2D scatter header")
@@ -619,6 +640,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     process_files(args.prompts_filename_inclPath,
+          file_prefix=args.file_prefix,
           mu_map_header=args.mu_map_header,
           randoms_data_filename=args.randoms_data_filename,
           scatter_2D_header_filename=args.scatter_2D_header_filename,

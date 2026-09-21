@@ -61,9 +61,9 @@ ENDIF()
 
 ####### Set Version number etc
 set(VERSION_MAJOR   6)
-set(VERSION_MINOR   4)
+set(VERSION_MINOR   5)
 set(VERSION_PATCH   0)
-set(VERSION   060400) # only used in STIRConfig.h.in and swig/CMakeLists.txt
+set(VERSION   060500) # only used in STIRConfig.h.in and swig/CMakeLists.txt
 
 set(STIR_VERSION
   ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
@@ -109,6 +109,7 @@ option(STIR_ENABLE_EXPERIMENTAL "disable use of STIR experimental code" OFF) # d
 option(DISABLE_NiftyPET_PROJECTOR "disable use of NiftyPET projector" OFF)
 option(DISABLE_Parallelproj_PROJECTOR "disable use of Parallelproj projector" OFF)
 OPTION(DOWNLOAD_ZENODO_TEST_DATA "download zenodo data for tests" OFF)
+option(DISABLE_PETSIRD "disable use of PETSIRD filetypes" OFF)
 option(DISABLE_UPENN "disable use of UPENN filetypes" OFF)
 
 find_package(Git QUIET)
@@ -144,11 +145,8 @@ endif()
 if(NOT DISABLE_CERN_ROOT)
   find_package(CERN_ROOT 6.28.00) # required for C++17
   if (CERN_ROOT_FOUND)
-    message(STATUS "ROOT Version: ${CERN_ROOT_VERSION}")
-    if (${CERN_ROOT_VERSION} VERSION_GREATER 6.29.99)
-        message(STATUS "ROOT Version is >= 6.30. Setting the minimum CXX version to 20.")
-        UseCXX(20)
-    endif()
+    message(STATUS "ROOT Version: ${CERN_ROOT_VERSION}. CXX version: ${CERN_ROOT_CXX_STANDARD}.")
+    UseCXX(${CERN_ROOT_CXX_STANDARD})
   endif()
 endif()
 
@@ -261,16 +259,17 @@ endif()
 
 # Parallelproj
 if(NOT DISABLE_Parallelproj_PROJECTOR)
-    find_package(parallelproj 1.3.4 CONFIG)
+    find_package(parallelproj CONFIG)
     if (parallelproj_FOUND)
       set(STIR_WITH_Parallelproj_PROJECTOR ON)
-      if (parallelproj_built_with_CUDA)
+      if (PARALLELPROJ_VERSION VERSION_LESS 2.0)
+        message(WARNING "Found parallelproj ${parallelproj_VERSION}. This will not be supported anymore in the near future.")        
+      endif()
+      if (PARALLELPROJ_CUDA)
         message(STATUS "Found parallelproj ${parallelproj_VERSION} (will use its CUDA support)")
+        set(parallelproj_built_with_CUDA ON)
       else()
         message(STATUS "Found parallelproj ${parallelproj_VERSION} (but using its OpenMP version as it wasn't built with CUDA)")
-      endif()
-      if (parallelproj_VERSION VERSION_LESS 1.0.1)
-        message(STATUS "If the above parallelproj info looks incorrect, upgrade it to at least 1.0.1 (but 1.2.13 or later is recommended)")
       endif()
     endif()
 endif()
@@ -280,12 +279,51 @@ else()
   message(STATUS "Parallelproj projector support disabled or not available.")
 endif()
 
+if(NOT DISABLE_PETSIRD)
+  find_package(PETSIRD CONFIG)
+
+  if(PETSIRD_FOUND)
+    message(STATUS "PETSIRD support enabled (found PETSIRD).")
+    set(HAVE_PETSIRD ON)
+
+    # Inspect PETSIRD transitive dependencies
+    if(TARGET PETSIRD::petsird)
+      get_target_property(_petsird_libs PETSIRD::petsird INTERFACE_LINK_LIBRARIES)
+      
+      get_target_property(_petsird_features PETSIRD::petsird INTERFACE_COMPILE_FEATURES)
+      get_target_property(_petsird_libs PETSIRD::petsird INTERFACE_LINK_LIBRARIES)
+      message(STATUS "PETSIRD::petsird dependencies: ${_petsird_libs}")
+      message(STATUS "PETSIRD::petsird compile features: ${_petsird_features}")
+      
+      # I have to give credit to AI for the following line. 
+      # Probably this will not be needed, but I will keep it here for future reference. 
+      # string(REGEX MATCH "cxx_std_([0-9]+)" _petsird_std_match "${_petsird_features}")
+      # if(CMAKE_MATCH_1)
+          # UseCXX(${CMAKE_MATCH_1})
+      # endif()
+      
+    else()
+      message(FATAL_ERROR "PETSIRD::petsird target not found after find_package(PETSIRD)")
+    endif()
+
+  else()
+    message(STATUS "PETSIRD not found: PETSIRD support will be disabled.")
+    set(HAVE_PETSIRD OFF)
+  endif()
+else()
+  set(HAVE_PETSIRD OFF)
+endif()
+
 #### enable support for ctest
 ENABLE_TESTING()
 
 ADD_SUBDIRECTORY(external_helpers) # git submodules that STIR requires
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(scripts)
+
+if(BUILD_SWIG_PYTHON)
+   ADD_SUBDIRECTORY(examples/python)
+endif()
 
 #### export configuration for external projects that want to use STIR
 # See https://cmake.org/cmake/help/v3.0/manual/cmake-packages.7.html
@@ -367,6 +405,7 @@ install(
 
 # install examples
 # note that location needs to be consistent with get_STIR_examples_dir()
+# Note: Same files in examples/python will also be installed in PYTHON_DEST
 install(
   DIRECTORY
     examples

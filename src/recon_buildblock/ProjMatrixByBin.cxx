@@ -178,9 +178,9 @@ ProjMatrixByBin::set_up(const shared_ptr<const ProjDataInfo>& proj_data_info_spt
 
 /*!
     \warning Preconditions
-    <li>abs(axial_pos_num) fits in 13 (4095) bits
-    <li>abs(tangential_pos_num) fits in 10 (1024) bits
-    <li>abs(tof_pos_num) fits in 7 bits (127)
+    - abs(axial_pos_num) fits in 13 (4095) bits
+    - abs(tangential_pos_num) fits in 10 (1024) bits
+    - abs(tof_pos_num) fits in 7 bits (127)
   */
 ProjMatrixByBin::CacheKey
 ProjMatrixByBin::cache_key(const Bin& bin) const
@@ -273,9 +273,9 @@ void ProjMatrixByBin::write_to_file_by_bin(
                                       const char * const file_name_without_extension)
 { 
   char h_interfile[256];
-  sprintf (h_interfile, "%s.hp", file_name_without_extension );
+  snprintf (h_interfile, sizeof(h_interfile), "%s.hp", file_name_without_extension );
   FILE * prob_file = fopen (h_interfile , "wb");
-  sprintf (h_interfile, "%s.p", file_name_without_extension );
+  snprintf (h_interfile, sizeof(h_interfile), "%s.p", file_name_without_extension );
   fstream pout;
   open_write_binary(pout, h_interfile);
   

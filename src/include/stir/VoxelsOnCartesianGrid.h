@@ -66,6 +66,11 @@ static VoxelsOnCartesianGrid ask_parameters();
                         const CartesianCoordinate3D<float>& origin,
                         const BasicCoordinate<3, float>& grid_spacing);
 
+  //! Construct a VoxelsOnCartesianGrid, moving data from the Array<3,elemT> object.
+  VoxelsOnCartesianGrid(Array<3, elemT>&& v,
+                        const CartesianCoordinate3D<float>& origin,
+                        const BasicCoordinate<3, float>& grid_spacing);
+
   //! Construct a VoxelsOnCartesianGrid from an index range
   /*! All elements are set 0. */
   VoxelsOnCartesianGrid(const IndexRange<3>& range,
@@ -75,6 +80,12 @@ static VoxelsOnCartesianGrid ask_parameters();
   //! Construct a VoxelsOnCartesianGrid, initialising data from the Array<3,elemT> object.
   VoxelsOnCartesianGrid(const shared_ptr<const ExamInfo>& exam_info_sptr,
                         const Array<3, elemT>& v,
+                        const CartesianCoordinate3D<float>& origin,
+                        const BasicCoordinate<3, float>& grid_spacing);
+
+  //! Construct a VoxelsOnCartesianGrid, moving data from the Array<3,elemT> object.
+  VoxelsOnCartesianGrid(const shared_ptr<const ExamInfo>& exam_info_sptr,
+                        Array<3, elemT>&& v,
                         const CartesianCoordinate3D<float>& origin,
                         const BasicCoordinate<3, float>& grid_spacing);
 
@@ -139,23 +150,13 @@ static VoxelsOnCartesianGrid ask_parameters();
                         const CartesianCoordinate3D<float>& origin = CartesianCoordinate3D<float>(0.F, 0.F, 0.F),
                         const CartesianCoordinate3D<int>& sizes = CartesianCoordinate3D<int>(-1, -1, -1));
 
-//! Definition of the pure virtual defined in DiscretisedDensity
-#ifdef STIR_NO_COVARIANT_RETURN_TYPES
-  DiscretisedDensity<3, elemT>*
-#else
-  VoxelsOnCartesianGrid<elemT>*
-#endif
-  get_empty_copy() const override;
+  //! Definition of the pure virtual defined in DiscretisedDensity
+  VoxelsOnCartesianGrid<elemT>* get_empty_copy() const override;
 
-  //! Like get_empty_copy, but returning a pointer to a VoxelsOnCartesianGrid
+  //! Alias of get_empty_copy (for backwards compatibility)
   VoxelsOnCartesianGrid<elemT>* get_empty_voxels_on_cartesian_grid() const;
 
-#ifdef STIR_NO_COVARIANT_RETURN_TYPES
-  virtual DiscretisedDensity<3, elemT>*
-#else
-  VoxelsOnCartesianGrid<elemT>*
-#endif
-  clone() const override;
+  VoxelsOnCartesianGrid<elemT>* clone() const override;
 
   //! Extract a single plane
   PixelsOnCartesianGrid<elemT> get_plane(const int z) const;

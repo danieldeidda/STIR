@@ -34,6 +34,8 @@ ProjectorByBinPairUsingParallelproj::initialise_keymap()
   parser.add_start_key("Projector Pair Using Parallelproj Parameters");
   parser.add_stop_key("End Projector Pair Using Parallelproj Parameters");
   parser.add_key("verbosity", &_verbosity);
+  parser.add_key("restrict to cylindrical FOV", &_restrict_to_cylindrical_FOV);
+  parser.add_key("num_gpu_chunks", &_num_gpu_chunks);
 }
 
 void
@@ -41,12 +43,16 @@ ProjectorByBinPairUsingParallelproj::set_defaults()
 {
   base_type::set_defaults();
   this->set_verbosity(true);
+  this->set_restrict_to_cylindrical_FOV(true);
+  this->set_num_gpu_chunks(1);
+  this->_already_set_up = false;
 }
 
 bool
 ProjectorByBinPairUsingParallelproj::post_processing()
 {
   this->set_verbosity(this->_verbosity);
+  this->set_num_gpu_chunks(this->_num_gpu_chunks);
 
   if (base_type::post_processing())
     return true;
@@ -60,6 +66,19 @@ ProjectorByBinPairUsingParallelproj::ProjectorByBinPairUsingParallelproj()
   set_defaults();
 }
 
+bool
+ProjectorByBinPairUsingParallelproj::get_restrict_to_cylindrical_FOV() const
+{
+  return this->_restrict_to_cylindrical_FOV;
+}
+
+void
+ProjectorByBinPairUsingParallelproj::set_restrict_to_cylindrical_FOV(bool val)
+{
+  this->_already_set_up = this->_already_set_up && (this->_restrict_to_cylindrical_FOV == val);
+  this->_restrict_to_cylindrical_FOV = val;
+}
+
 BackProjectorByBinParallelproj*
 BackProjectorByBinParallelproj::clone() const
 {
@@ -70,15 +89,26 @@ Succeeded
 ProjectorByBinPairUsingParallelproj::set_up(const shared_ptr<const ProjDataInfo>& proj_data_info_sptr,
                                             const shared_ptr<const DiscretisedDensity<3, float>>& image_info_sptr)
 {
-  _helper = std::make_shared<detail::ParallelprojHelper>(*proj_data_info_sptr, *image_info_sptr);
-  dynamic_pointer_cast<ForwardProjectorByBinParallelproj>(this->forward_projector_sptr)->set_helper(_helper);
-  dynamic_pointer_cast<BackProjectorByBinParallelproj>(this->back_projector_sptr)->set_helper(_helper);
+  auto fwd_prj_downcast_sptr = dynamic_pointer_cast<ForwardProjectorByBinParallelproj>(this->forward_projector_sptr);
+  if (!fwd_prj_downcast_sptr)
+    error("internal error: forward projector should be ParallelProj");
+
+  auto bck_prj_downcast_sptr = dynamic_pointer_cast<BackProjectorByBinParallelproj>(this->back_projector_sptr);
+  if (!bck_prj_downcast_sptr)
+    error("internal error: back projector should be ParallelProj");
+
+  bck_prj_downcast_sptr->set_restrict_to_cylindrical_FOV(this->_restrict_to_cylindrical_FOV);
+  fwd_prj_downcast_sptr->set_restrict_to_cylindrical_FOV(this->_restrict_to_cylindrical_FOV);
+  this->_helper = std::make_shared<detail::ParallelprojHelper>(*proj_data_info_sptr, *image_info_sptr);
+  fwd_prj_downcast_sptr->set_helper(this->_helper);
+  bck_prj_downcast_sptr->set_helper(this->_helper);
 
   // the forward_projector->set_up etc will be called in the base class
 
   if (base_type::set_up(proj_data_info_sptr, image_info_sptr) != Succeeded::yes)
     return Succeeded::no;
 
+  this->_already_set_up = true;
   return Succeeded::yes;
 }
 
@@ -96,6 +126,22 @@ ProjectorByBinPairUsingParallelproj::set_verbosity(const bool verbosity)
       = dynamic_pointer_cast<BackProjectorByBinParallelproj>(this->back_projector_sptr);
   if (bck_prj_downcast_sptr)
     bck_prj_downcast_sptr->set_verbosity(_verbosity);
+}
+
+void
+ProjectorByBinPairUsingParallelproj::set_num_gpu_chunks(const int num_gpu_chunks)
+{
+  _num_gpu_chunks = num_gpu_chunks;
+
+  shared_ptr<ForwardProjectorByBinParallelproj> fwd_prj_downcast_sptr
+      = dynamic_pointer_cast<ForwardProjectorByBinParallelproj>(this->forward_projector_sptr);
+  if (fwd_prj_downcast_sptr)
+    fwd_prj_downcast_sptr->set_num_gpu_chunks(_num_gpu_chunks);
+
+  shared_ptr<BackProjectorByBinParallelproj> bck_prj_downcast_sptr
+      = dynamic_pointer_cast<BackProjectorByBinParallelproj>(this->back_projector_sptr);
+  if (bck_prj_downcast_sptr)
+    bck_prj_downcast_sptr->set_num_gpu_chunks(_num_gpu_chunks);
 }
 
 END_NAMESPACE_STIR

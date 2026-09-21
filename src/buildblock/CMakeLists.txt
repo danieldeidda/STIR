@@ -22,6 +22,7 @@ set(${dir_LIB_SOURCES}
   ExamData.cxx
   RadionuclideDB.cxx
   Radionuclide.cxx
+  DataWithProjDataInfo.cxx
   ProjData.cxx
   ProjDataInfo.cxx
   ProjDataInfoCylindrical.cxx
@@ -29,7 +30,6 @@ set(${dir_LIB_SOURCES}
   ProjDataInfoCylindricalNoArcCorr.cxx
   ProjDataInfoSubsetByView.cxx
   ProjDataInfoBlocksOnCylindricalNoArcCorr.cxx
-  ProjDataInfoGeneric.cxx
   ProjDataInfoGenericNoArcCorr.cxx
   DetectorCoordinateMap.cxx
   GeometryBlocksOnCylindrical.cxx
@@ -107,7 +107,12 @@ if (NOT MINI_STIR)
     list(APPEND ${dir_LIB_SOURCES}
       ProjDataGEHDF5.cxx
       )
-endif()
+  endif()
+  if (HAVE_PETSIRD)
+    list(APPEND ${dir_LIB_SOURCES}
+      PETSIRDInfo.cxx
+    )
+  endif()
 
 endif() # MINI_STIR
 
@@ -153,4 +158,8 @@ endif()
 
 if (STIR_OPENMP)
   target_link_libraries(${TARGET} PUBLIC ${OpenMP_EXE_LINKER_FLAGS})
+endif()
+
+if(HAVE_PETSIRD)
+  target_link_libraries(${TARGET} PUBLIC PETSIRD::petsird)
 endif()

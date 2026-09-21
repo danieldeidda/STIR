@@ -86,6 +86,10 @@
 #include "stir/recon_buildblock/SPECTGPU_projector/ProjectorByBinPairUsingSPECTGPU.h"
 #endif
 
+#ifdef HAVE_PETSIRD
+#  include "stir/recon_buildblock/BinNormalisationFromPETSIRD.h"
+#endif
+
 #ifdef STIR_WITH_Parallelproj_PROJECTOR
 #  include "stir/recon_buildblock/Parallelproj_projector/ForwardProjectorByBinParallelproj.h"
 #  include "stir/recon_buildblock/Parallelproj_projector/BackProjectorByBinParallelproj.h"
@@ -179,6 +183,10 @@ END_NAMESPACE_ECAT
 
 #ifdef HAVE_HDF5
 static GE::RDF_HDF5::BinNormalisationFromGEHDF5::RegisterIt dummy104;
+#endif
+
+#ifdef HAVE_PETSIRD
+static BinNormalisationFromPETSIRD::RegisterIt dummy105;
 #endif
 
 static FourierRebinning::RegisterIt dummyFORE;

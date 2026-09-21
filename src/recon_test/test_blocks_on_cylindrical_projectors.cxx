@@ -1,7 +1,7 @@
 /*!
 
   \file
-  \ingroup recontest
+  \ingroup recon_test
 
   \brief Test program for back projection and forward projection using stir::ProjDataInfoBlockOnCylindrical
 
@@ -195,7 +195,7 @@ BlocksTests::run_symmetry_test(ForwardProjectorByBin& forw_projector1, ForwardPr
   shared_ptr<DiscretisedDensity<3, float>> image1_sptr(image.clone());
   write_to_file("image_for", *image1_sptr);
 
-  image = *image.get_empty_copy();
+  image.fill(0);
   for (int i = 15; i < 360; i += 30)
     {
       theta2 = i * _PI / 180;
@@ -307,7 +307,8 @@ BlocksTests::run_plane_symmetry_test(ForwardProjectorByBin& forw_projector1, For
 
   //    rotate by 30 degrees
   phi2 = 30 * _PI / 180;
-  VoxelsOnCartesianGrid<float> image2 = *image.get_empty_copy();
+  VoxelsOnCartesianGrid<float> image2(image);
+  image2.fill(0);
   const Array<2, float> direction2 = make_array(make_1d_array(1.F, 0.F, 0.F),
                                                 make_1d_array(0.F, cos(float(_PI) - phi2), sin(float(_PI) - phi2)),
                                                 make_1d_array(0.F, -sin(float(_PI) - phi2), cos(float(_PI) - phi2)));
@@ -591,7 +592,7 @@ BlocksTests::run_map_orientation_test(ForwardProjectorByBin& forw_projector1, Fo
   shared_ptr<DiscretisedDensity<3, float>> image1_sptr(image.clone());
   write_to_file("image_to_fwp", *image1_sptr);
 
-  image = *image.get_empty_copy();
+  image.fill(0);
 
   shared_ptr<const DetectorCoordinateMap> map_sptr;
   auto scannerBlocks_sptr = std::make_shared<Scanner>(Scanner::SAFIRDualRingPrototype);
@@ -606,7 +607,7 @@ BlocksTests::run_map_orientation_test(ForwardProjectorByBin& forw_projector1, Fo
   DetectionPosition<> det_pos, det_pos_ord;
   DetectionPositionPair<> dp1, dp2, dpR1;
   CartesianCoordinate3D<float> coord_ord;
-  map_sptr = scannerBlocks_sptr->get_detector_map_sptr();
+  map_sptr = scannerBlocks_sptr->get_detector_coordinate_map_sptr();
   int rad_size = map_sptr->get_num_radial_coords();
   int ax_size = map_sptr->get_num_axial_coords();
   int tang_size = map_sptr->get_num_tangential_coords();
@@ -632,7 +633,7 @@ BlocksTests::run_map_orientation_test(ForwardProjectorByBin& forw_projector1, Fo
   auto scannerBlocks_reord_sptr = std::make_shared<Scanner>(Scanner::SAFIRDualRingPrototype);
   scannerBlocks_reord_sptr->set_scanner_geometry("Generic");
   //    scannerBlocks_reord_sptr->set_num_transaxial_blocks_per_bucket(1);
-  scannerBlocks_reord_sptr->set_detector_map(coord_map_reordered);
+  scannerBlocks_reord_sptr->set_detector_coordinate_map(DetectorCoordinateMap(coord_map_reordered));
   scannerBlocks_reord_sptr->set_up();
 
   auto proj_data_info_blocks_reord_sptr = std::make_shared<ProjDataInfoGenericNoArcCorr>();
@@ -700,7 +701,7 @@ BlocksTests::run_projection_test(ForwardProjectorByBin& forw_projector1, Forward
   shared_ptr<DiscretisedDensity<3, float>> image1_sptr(image.clone());
   write_to_file("image_with_voxel_at_30_0", *image1_sptr);
 
-  image = *image.get_empty_copy();
+  image.fill(0);
   image[(image.get_min_index() + image.get_max_index()) / 2 * grid_spacing.z()][0][-25] = 1;
 
   shared_ptr<DiscretisedDensity<3, float>> image2_sptr(image.clone());
@@ -833,7 +834,6 @@ BlocksTests::run_intersection_with_cylinder_test()
   };
 
   const auto segment_sequence = ProjData::standard_segment_sequence(*proj_data_info);
-  std::size_t index(0);
   for (int seg : segment_sequence)
     {
       bin.segment_num() = seg;
