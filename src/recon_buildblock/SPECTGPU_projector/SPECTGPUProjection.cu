@@ -132,7 +132,7 @@ __global__ void backwardKernel(float* __restrict__ out_im,
         }
         else
             atten=1;
-        out_im[(idz * dim.y + idy) * dim.x + idx] += atten*in_sino[idz * dim.x + (dim.x - 1 - idx)] * spacing.x;//in_sino[idz * dim.y + idy] * spacing.x;
+        out_im[(idz * dim.y + idy) * dim.x + idx] += atten*in_sino[idz * dim.x + (dim.x - 1 - idx)];//in_sino[idz * dim.y + idy] * spacing.x;
 
     }
 }                          

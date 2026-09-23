@@ -54,7 +54,7 @@ GaussianConvolutionKernel_pull(float* __restrict__ out_im,
 //    following assumes spacingx=spacinz could be needed to
     float sigma_x_vox = sigma / (spacing.x * 0.1f);
     float sigma_z_vox = sigma / (spacing.z * 0.1f);
-//    float sigma_vox = sigma / (spacing.x * 0.1f);
+
     //  definition of 3*sigma radius;
     //  we could even do the number_of_sigmas like in SPECTUB
     int Rz = max(2, (int)ceilf(3.f * sigma_z_vox));
@@ -139,14 +139,12 @@ GaussianConvolutionKernel_push(float* __restrict__ out_im,
 
   float sigma_x_vox = sigma / (spacing.x * 0.1f);
   float sigma_z_vox = sigma / (spacing.z * 0.1f);
-//    float sigma_vox = sigma / (spacing.x * 0.1f);
+
   //  definition of 3*sigma radius;
   //  we could even do the number_of_sigmas like in SPECTUB
   int Rz = max(2, (int)ceilf(3.f * sigma_z_vox));
   int Rx = max(2, (int)ceilf(3.f * sigma_x_vox));
-//  definition of 3*sigma radius;
-//  we could even do the number_of_sigmas like in SPECTUB
-//  int R = max(2, (int)ceilf(3.f * sigma_vox));
+
 
   for (int dz = -Rz; dz <= Rz; dz++)
   {
