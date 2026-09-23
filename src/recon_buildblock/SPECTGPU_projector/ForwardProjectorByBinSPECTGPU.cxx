@@ -22,13 +22,13 @@
 */
 
 #include "stir/recon_buildblock/SPECTGPU_projector/ForwardProjectorByBinSPECTGPU.h"
-#include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUHelper.h"
 #include "stir/ProjDataInMemory.h"
 #include "stir/RelatedViewgrams.h"
 #include "stir/ProjDataInfoCylindricalNoArcCorr.h"
 #include "stir/recon_buildblock/TrivialDataSymmetriesForBins.h"
 #include "stir/recon_array_functions.h"
 #include "stir/error.h"
+#include "stir/format.h"
 #include "stir/IO/read_from_file.h"
 
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUForwardProjectorCUDA.h"
@@ -90,39 +90,37 @@ ForwardProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj
 
         if (o1!=o2)
         {
-            std::cout << "image origin: "
-                      << o1.z() << " "
-                      << o1.y() << " "
-                      << o1.x() << std::endl;
-
-            std::cout << "umap origin: "
-                      << o2.z() << " "
-                      << o2.y() << " "
-                      << o2.x() << std::endl;
-
             const auto& r1 = _density_sptr->get_index_range();
             const auto& r2 = _att_coeff_sptr->get_index_range();
 
-            std::cout << "image z: "
-                      << r1[1].get_min_index() << " "
-                      << r1[1].get_max_index() <<" umap z: "
-                      << r2[1].get_min_index() <<" "
-                      << r2[1].get_max_index() << std::endl;
-
-            std::cout << "image y: "
-                      << r1[2].get_min_index() << " "
-                      << r1[2].get_max_index() <<" umap y: "
-                      << r2[2].get_min_index() <<" "
-                      << r2[2].get_max_index() << std::endl;
-
-            std::cout << "image x: "
-                      << r1[3].get_min_index() << " "
-                      << r1[3].get_max_index() <<" umap x: "
-                      << r2[3].get_min_index() <<" "
-                      << r2[3].get_max_index() << std::endl;
-
-            error("SPECTGPU: Attenuation coefficient image expected to match characteristics of Activity image"
-                  );
+            error(format("SPECTGPU:: Attenuation coefficient image expected to match characteristics of Activity image\n"
+                  "Image origin:\n"
+                  "  x={} y={} z={} \n"
+                  "Attenuation origin:\n"
+                  "  x={} y={} z={} \n"
+                  "Image index range:\n"
+                  "  x=({},{}) y=({},{}) z=({},{}) \n"
+                  "Attenuation: index range\n"
+                  "  x=({},{}) y=({},{}) z=({},{}) \n",
+                  o1.x(),
+                  o1.y(),
+                  o1.z(),
+                  o2.x(),
+                  o2.y(),
+                  o2.z(),
+                  r1[1].get_min_index(),
+                    r1[1].get_max_index(),
+                    r1[2].get_min_index(),
+                    r1[2].get_max_index(),
+                    r1[3].get_min_index(),
+                    r1[3].get_max_index(),
+                    r2[1].get_min_index(),
+                    r2[1].get_max_index(),
+                    r2[2].get_min_index(),
+                    r2[2].get_max_index(),
+                    r2[3].get_min_index(),
+                    r2[3].get_max_index()
+                    ));
         }
     }
     auto& density_cast = dynamic_cast<const VoxelsOnCartesianGrid<float>&>(*_density_sptr);
@@ -150,29 +148,21 @@ ForwardProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj
     int dim_tg = proj_data_info_sptr->get_num_tangential_poss();
     float tg_spacing = proj_data_info_sptr->get_scanner_sptr()->get_default_bin_size();
     float ax_spacing = proj_data_info_sptr->get_scanner_sptr()->get_ring_spacing();
-//    std::cout<<bin_size<<std::endl;
-//    if (dim)
-//    {
-
-//    }
-//    }
     if (dim_ax != this->dim_z ||
         std::fabs(this->spacing_z - ax_spacing) > 1e-5f ||
         dim_tg != this->dim_x ||
         std::fabs(this->spacing_x - tg_spacing> 1e-5f) )
     {
-        error(
-            "SPECTGPU: expected axial and tangential dimensions/spacings "
-            "to match image z/x.\n"
-            "\n"
+        error(format(
+            "SPECTGPU:: expected axial and tangential dimensions/spacings to match image z/x.\n"
             "Image:\n"
-            "  dim_x=%d dim_z=%d spacing_x=%g spacing_z=%g\n"
+            "  dim_x={} dim_z={} spacing_x={} spacing_z={}\n"
             "\n"
             "Projection:\n"
-            "  dim_tg=%d dim_ax=%d spacing_tg=%g spacing_ax=%g\n"
+            "  dim_tg={} dim_ax={} spacing_tg={} spacing_ax={}\n"
             "\n"
             "Consider:\n"
-            "  zoom_image <output> <input> %d %g 0 0 %d %g 0\n",
+            "  zoom_image <output> <input> {} {} 0 0 {} {} 0\n",
             this->dim_x,
             this->dim_z,
             this->spacing_x,
@@ -184,7 +174,7 @@ ForwardProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj
             dim_tg,
             tg_spacing / this->spacing_x,
             dim_ax,
-            ax_spacing / this->spacing_z);
+            ax_spacing / this->spacing_z));
     }
 
     // Set the thread block and grid dimensions using std::tuple
@@ -207,10 +197,10 @@ ForwardProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj
     _projected_data_sptr.reset(new ProjDataInMemory(this->_density_sptr->get_exam_info_sptr(), proj_data_info_sptr));
 
     // Set up the SPECTGPU binary helper
-    _helper.set_scanner_type(proj_data_info_sptr->get_scanner_ptr()->get_type());
-    _helper.set_cuda_device_id(_cuda_device);
-    _helper.set_verbose(_cuda_verbosity);
-    _helper.set_up();
+//    _helper.set_scanner_type(proj_data_info_sptr->get_scanner_ptr()->get_type());
+//    _helper.set_cuda_device_id(_cuda_device);
+//    _helper.set_verbose(_cuda_verbosity);
+//    _helper.set_up();
 }
 
 

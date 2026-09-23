@@ -27,12 +27,12 @@
 
 // the following is a pull operation
 __global__ void
-GaussianConvolutionKernel_pull(const float* __restrict__ in_im,
-                         float* __restrict__ out_im,
-                         int3 dim,
-                         float3 spacing,
-                         float sigma0,
-                         float slope)
+GaussianConvolutionKernel_pull(float* __restrict__ out_im,
+                               const float* __restrict__ in_im,
+                               int3 dim,
+                               float3 spacing,
+                               float sigma0,
+                               float slope)
 {
   // parallelise the operation across all image voxels
     int i = threadIdx.x + blockDim.x * blockIdx.x;
@@ -113,8 +113,8 @@ GaussianConvolutionKernel_pull(const float* __restrict__ in_im,
 
 // the following is the adjoint operation (push)
 __global__ void
-GaussianConvolutionKernel_push(const float* __restrict__ in_im,
-                               float* __restrict__ out_im,
+GaussianConvolutionKernel_push(float* __restrict__ out_im,
+                               const float* __restrict__ in_im,
                                int3 dim,
                                float3 spacing,
                                float sigma0,

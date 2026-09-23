@@ -25,12 +25,9 @@ void copy_stir_im_to_dev(
     const DiscretisedDensity<3,float>& image);
 
 
-void run_backward_projection_cuda(
+void run_backward_projection_cuda(float* dev_image,
         const RelatedViewgrams<float>& stir_sino,
-        float* dev_image,
         const float* dev_umap,
-//        DiscretisedDensity<3,float>& stir_image,
-//        const DiscretisedDensity<3,float>& stir_umap,
         bool do_atten,
         float coll_sigma0_cm,
         float coll_slope,

@@ -20,7 +20,6 @@
 */
 
 #include "stir/recon_buildblock/SPECTGPU_projector/BackProjectorByBinSPECTGPU.h"
-#include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUHelper.h"
 #include "stir/DiscretisedDensity.h"
 #include "stir/RelatedViewgrams.h"
 #include "stir/VoxelsOnCartesianGrid.h"
@@ -28,9 +27,10 @@
 #include "stir/ProjDataInfoCylindricalNoArcCorr.h"
 #include "stir/recon_array_functions.h"
 #include "stir/error.h"
+#include "stir/format.h"
 #include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUBackwardProjectorCUDA.h"
 #include "stir/IO/read_from_file.h"
-#include "stir/cuda_utilities.h"
+//#include "stir/cuda_utilities.h"
 
 START_NAMESPACE_STIR
 
@@ -89,39 +89,37 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
 
       if (o1!=o2)
       {
-          std::cout << "image origin: "
-                    << o1.z() << " "
-                    << o1.y() << " "
-                    << o1.x() << std::endl;
-
-          std::cout << "umap origin: "
-                    << o2.z() << " "
-                    << o2.y() << " "
-                    << o2.x() << std::endl;
-
           const auto& r1 = _density_sptr->get_index_range();
           const auto& r2 = _att_coeff_sptr->get_index_range();
 
-          std::cout << "image z: "
-                    << r1[1].get_min_index() << " "
-                    << r1[1].get_max_index() <<" umap z: "
-                    << r2[1].get_min_index() <<" "
-                    << r2[1].get_max_index() << std::endl;
-
-          std::cout << "image y: "
-                    << r1[2].get_min_index() << " "
-                    << r1[2].get_max_index() <<" umap y: "
-                    << r2[2].get_min_index() <<" "
-                    << r2[2].get_max_index() << std::endl;
-
-          std::cout << "image x: "
-                    << r1[3].get_min_index() << " "
-                    << r1[3].get_max_index() <<" umap x: "
-                    << r2[3].get_min_index() <<" "
-                    << r2[3].get_max_index() << std::endl;
-
-          error("SPECTGPU: Attenuation coefficient image expected to match characteristics of Activity image"
-                );
+          error(format("SPECTGPU:: Attenuation coefficient image expected to match characteristics of Activity image\n"
+                "Image origin:\n"
+                "  x={} y={} z={} \n"
+                "Attenuation origin:\n"
+                "  x={} y={} z={} \n"
+                "Image index range:\n"
+                "  x=({},{}) y=({},{}) z=({},{}) \n"
+                "Attenuation: index range\n"
+                "  x=({},{}) y=({},{}) z=({},{}) \n",
+                o1.x(),
+                o1.y(),
+                o1.z(),
+                o2.x(),
+                o2.y(),
+                o2.z(),
+                r1[1].get_min_index(),
+                  r1[1].get_max_index(),
+                  r1[2].get_min_index(),
+                  r1[2].get_max_index(),
+                  r1[3].get_min_index(),
+                  r1[3].get_max_index(),
+                  r2[1].get_min_index(),
+                  r2[1].get_max_index(),
+                  r2[2].get_min_index(),
+                  r2[2].get_max_index(),
+                  r2[3].get_min_index(),
+                  r2[3].get_max_index()
+                  ));
       }
   }
 
@@ -151,24 +149,21 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
   int dim_tg = proj_data_info_sptr->get_num_tangential_poss();
   float tg_spacing = proj_data_info_sptr->get_scanner_sptr()->get_default_bin_size();
   float ax_spacing = proj_data_info_sptr->get_scanner_sptr()->get_ring_spacing();
-//    std::cout<<bin_size<<std::endl;
   if (dim_ax != this->dim_z ||
       std::fabs(this->spacing_z - ax_spacing) > 1e-5f ||
       dim_tg != this->dim_x ||
       std::fabs(this->spacing_x - tg_spacing> 1e-5f) )
   {
-      error(
-          "SPECTGPU: expected axial and tangential dimensions/spacings "
-          "to match image z/x.\n"
-          "\n"
+      error(format(
+          "SPECTGPU:: expected axial and tangential dimensions/spacings to match image z/x.\n"
           "Image:\n"
-          "  dim_x=%d dim_z=%d spacing_x=%g spacing_z=%g\n"
+          "  dim_x={} dim_z={} spacing_x={} spacing_z={}\n"
           "\n"
           "Projection:\n"
-          "  dim_tg=%d dim_ax=%d spacing_tg=%g spacing_ax=%g\n"
+          "  dim_tg={} dim_ax={} spacing_tg={} spacing_ax={}\n"
           "\n"
           "Consider:\n"
-          "  zoom_image <output> <input> %d %g 0 0 %d %g 0\n",
+          "  zoom_image <output> <input> {} {} 0 0 {} {} 0\n",
           this->dim_x,
           this->dim_z,
           this->spacing_x,
@@ -180,7 +175,7 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
           dim_tg,
           tg_spacing / this->spacing_x,
           dim_ax,
-          ax_spacing / this->spacing_z);
+          ax_spacing / this->spacing_z));
   }
   // Set the thread block and grid dimensions using std::tuple
   this->min_z = density_info_sptr->get_min_index();
@@ -192,33 +187,7 @@ BackProjectorByBinSPECTGPU::set_up(const shared_ptr<const ProjDataInfo>& proj_da
   this->grid_dim.x = (this->dim_x + this->block_dim.x - 1) / this->block_dim.x;
   this->grid_dim.y = (this->dim_y + this->block_dim.y - 1) / this->block_dim.y;
   this->grid_dim.z = (this->dim_z + this->block_dim.z - 1) / this->block_dim.z;
-
-
-  // Set up the SPECTGPU binary helper
-  _helper.set_cuda_device_id(_cuda_device);
-  _helper.set_scanner_type(proj_data_info_sptr->get_scanner_ptr()->get_type());
-//  _helper.set_att(0);
-  _helper.set_verbose(_cuda_verbosity);
-  _helper.set_up();
-
-  // Create sinogram
-//  _np_sino = _helper.create_SPECTGPU_sinogram();
 }
-
-//void
-//BackProjectorByBinSPECTGPU::back_project(const ProjData& proj_data, int subset_num, int num_subsets)
-//{
-//  // Check the user has tried to project all data
-//  if (subset_num != 0 || num_subsets != 1)
-//    error("BackProjectorByBinSPECTGPU::back_project "
-//          "only works with all data (no subsets).");
-//  actual_back_project(DiscretisedDensity<3,float>& stir_image,
-//                      const RelatedViewgrams<float>& stir_sino,
-//                      const int,
-//                      const int,
-//                      const int,
-//                      const int);
-//}
 
 void
 BackProjectorByBinSPECTGPU::get_output(
@@ -233,27 +202,6 @@ BackProjectorByBinSPECTGPU::get_output(
                 dev_umap,
                 _do_atten);
 }
-//  std::vector<float> sino = _helper.create_SPECTGPU_sinogram();
-
-//  // --------------------------------------------------------------- //
-//  //   Back project
-//  // --------------------------------------------------------------- //
-
-//  std::vector<float> np_im = _helper.create_SPECTGPU_image();
-//  _helper.back_project(np_im, sino_);
-
-//  // --------------------------------------------------------------- //
-//  //   SPECTGPU -> STIR image conversion
-//  // --------------------------------------------------------------- //
-
-//  _helper.convert_image_SPECTGPU_to_stir(density, np_im);
-
-//  // After the back projection, we enforce a truncation outside of the FOV.
-//  // This is because the SPECTGPU FOV is smaller than the STIR FOV and this
-//  // could cause some voxel values to spiral out of control.
-//  if (_use_truncation)
-//    truncate_rim(density, 17);
-//}
 
 void
 BackProjectorByBinSPECTGPU::start_accumulating_in_new_target()
@@ -271,10 +219,6 @@ BackProjectorByBinSPECTGPU::start_accumulating_in_new_target()
   if (_do_atten)
       copy_stir_im_to_dev(dev_umap, *_att_coeff_sptr);
 
-//  copy_stir_to_dev(dev_image, *_att_coeff_sptr); is zero at the start
-
-  // Also reset the SPECTGPU sinogram
-//  _np_sino = _helper.create_SPECTGPU_sinogram();
 }
 
 void
@@ -286,8 +230,8 @@ BackProjectorByBinSPECTGPU::actual_back_project(DiscretisedDensity<3,float>& sti
                                                 const int)
 {
     run_backward_projection_cuda(
-                stir_sino,
                 dev_image,
+                stir_sino,
                 dev_umap,
                 _do_atten,
                 _sigma0,

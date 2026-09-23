@@ -18,14 +18,13 @@
 
     See STIR/LICENSE.txt for details
 */
-#pragma once
 
 #include <cuda_runtime.h>
 
 __global__
 void GaussianConvolutionKernel_pull(
-        const float* in_im,
         float* out_im,
+        const float* in_im,
         int3 image_dim,
         float3 spacing,
         float sigma0,
@@ -35,8 +34,8 @@ void GaussianConvolutionKernel_pull(
 
 __global__
 void GaussianConvolutionKernel_push(
-        const float* in_im,
         float* out_im,
+        const float* in_im,
         int3 image_dim,
         float3 spacing,
         float sigma0,

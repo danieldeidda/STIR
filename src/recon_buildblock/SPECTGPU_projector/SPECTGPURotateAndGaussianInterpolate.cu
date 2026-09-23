@@ -31,12 +31,12 @@
 
 // the following is a pull operation
 __global__ void
-rotateKernel_pull(const float* __restrict__ in_im,
-                  float* __restrict__ out_im,
+rotateKernel_pull(float* __restrict__ out_im,
+                  const float* __restrict__ in_im,
                   int3 dim,
                   float3 spacing,
                   float3 origin,
-                  int3 min_indeces,
+                  int3 min_indices,
                   float angle_rad)
 {
   // parallelise the operation across all image voxels
@@ -52,9 +52,9 @@ rotateKernel_pull(const float* __restrict__ in_im,
   int idx = i + (j * dim.x) + (k * dim.x * dim.y);
 
 //  calculate voxels position with respect to the center of the image
-  float Xs_rel_x = (i + min_indeces.x + 0.5f) * spacing.x - origin.x;
-  float Xs_rel_y = (j + min_indeces.y + 0.5f) * spacing.y - origin.y;
-  float Xs_rel_z = (k + min_indeces.z + 0.5f) * spacing.z - origin.z;
+  float Xs_rel_x = (i + min_indices.x + 0.5f) * spacing.x - origin.x;
+  float Xs_rel_y = (j + min_indices.y + 0.5f) * spacing.y - origin.y;
+  float Xs_rel_z = (k + min_indices.z + 0.5f) * spacing.z - origin.z;
 
   // perform the rotation by 'angle_rad'
   float X_rot_x = (Xs_rel_x * cosf(angle_rad)) - (Xs_rel_y * sinf(angle_rad));
@@ -67,9 +67,9 @@ rotateKernel_pull(const float* __restrict__ in_im,
   float Xr_z = X_rot_z + origin.z;
 
  // now we go fully back to voxel space (but now it's been rotated)
-  float p_r = Xr_x / spacing.x - min_indeces.x;
-  float q_r = Xr_y / spacing.y - min_indeces.y;
-  float r_r = Xr_z / spacing.z - min_indeces.z;
+  float p_r = Xr_x / spacing.x - min_indices.x;
+  float q_r = Xr_y / spacing.y - min_indices.y;
+  float r_r = Xr_z / spacing.z - min_indices.z;
 
   // first loop is for finding the value of a gaussian kernel at
   // each nearest neighbour position and summing them all. This will allow normalisation
@@ -81,17 +81,17 @@ rotateKernel_pull(const float* __restrict__ in_im,
   for (int dr = -3; dr <= 3; dr++)
     {
       int r = (int)roundf(r_r) + dr;          // nearest neighbour z coordinate in rotated voxel space
-      float x_r = ((r + min_indeces.z + 0.5f) * spacing.z) - origin.z; // converted to image space
+      float x_r = ((r + min_indices.z + 0.5f) * spacing.z) - origin.z; // converted to image space
 
       for (int dq = -2; dq <= 2; dq++)
         {
           int q = (int)roundf(q_r) + dq;
-          float x_q = ((q + min_indeces.y + 0.5f) * spacing.y) - origin.y;
+          float x_q = ((q + min_indices.y + 0.5f) * spacing.y) - origin.y;
 
           for (int dp = -2; dp <= 2; dp++)
             {
               int p = (int)roundf(p_r) + dp;
-              float x_p = ((p + min_indeces.x + 0.5f) * spacing.x) - origin.x;
+              float x_p = ((p + min_indices.x + 0.5f) * spacing.x) - origin.x;
 
               // get distance between nearest neighbour and central voxel
               // both need to be in image space
@@ -108,7 +108,7 @@ rotateKernel_pull(const float* __restrict__ in_im,
 //                  printf("Xr_z=%f\n", Xr_z);
 //                  printf("x_r=%f\n", x_r);
 //                  printf("origin.z=%f\n", origin.z);
-//                  printf("min_z=%d\n", min_indeces.z);
+//                  printf("min_z=%d\n", min_indices.z);
 //              }
 
               G += g;
@@ -122,17 +122,17 @@ rotateKernel_pull(const float* __restrict__ in_im,
   for (int dr = -3; dr <= 3; dr++)
     {
       float r = dr + (int)roundf(r_r);
-      float x_r =  ((r + min_indeces.z + 0.5f) * spacing.z) - origin.z ;
+      float x_r =  ((r + min_indices.z + 0.5f) * spacing.z) - origin.z ;
 
       for (int dq = -2; dq <= 2; dq++)
         {
           float q = dq + (int)roundf(q_r);
-          float x_q = ((q + min_indeces.y + 0.5f) * spacing.y) - origin.y;
+          float x_q = ((q + min_indices.y + 0.5f) * spacing.y) - origin.y;
 
           for (int dp = -2; dp <= 2; dp++)
             {
               float p = dp + (int)roundf(p_r);
-              float x_p = ((p + min_indeces.x + 0.5f) * spacing.x) - origin.x;
+              float x_p = ((p + min_indices.x + 0.5f) * spacing.x) - origin.x;
 
               float delta_x = Xr_x - x_p;
               float delta_y = Xr_y - x_q;
@@ -165,12 +165,12 @@ rotateKernel_pull(const float* __restrict__ in_im,
 
 // the following is the adjoint operation (push)
 __global__ void
-rotateKernel_push(const float* __restrict__ in_im,
-                  float* __restrict__ out_im,
+rotateKernel_push(float* __restrict__ out_im,
+                  const float* __restrict__ in_im,
                   int3 dim,
                   float3 spacing,
                   float3 origin,
-                  int3 min_indeces,
+                  int3 min_indices,
                   float angle_rad)
 {
   // parallelise the operation across all image voxels
@@ -186,9 +186,9 @@ rotateKernel_push(const float* __restrict__ in_im,
   int idx = i + (j * dim.x) + (k * dim.x * dim.y);
 
   // calculate voxels position with respect to the center of the image
-  float Xs_rel_x = (i + min_indeces.x + 0.5f) * spacing.x - origin.x;
-  float Xs_rel_y = (j + min_indeces.y + 0.5f) * spacing.y - origin.y;
-  float Xs_rel_z = (k + min_indeces.z + 0.5f) * spacing.z - origin.z;
+  float Xs_rel_x = (i + min_indices.x + 0.5f) * spacing.x - origin.x;
+  float Xs_rel_y = (j + min_indices.y + 0.5f) * spacing.y - origin.y;
+  float Xs_rel_z = (k + min_indices.z + 0.5f) * spacing.z - origin.z;
 
   // perform the rotation by 'angle_rad'
   float X_rot_x = (Xs_rel_x * cosf(angle_rad)) - (Xs_rel_y * sinf(angle_rad));
@@ -201,9 +201,9 @@ rotateKernel_push(const float* __restrict__ in_im,
   float Xr_z = X_rot_z + origin.z;
 
   // take indices of new rotated position
-  float p_r = Xr_x / spacing.x - min_indeces.x;
-  float q_r = Xr_y / spacing.y - min_indeces.y;
-  float r_r = Xr_z / spacing.z - min_indeces.z;
+  float p_r = Xr_x / spacing.x - min_indices.x;
+  float q_r = Xr_y / spacing.y - min_indices.y;
+  float r_r = Xr_z / spacing.z - min_indices.z;
 
   // first loop is for finding the value of a gaussian kernel at
   // each nearest neighbour position and summing them all. This will allow normalisation
@@ -214,17 +214,17 @@ rotateKernel_push(const float* __restrict__ in_im,
   for (int dr = -3; dr <= 3; dr++)
     {
       float r = dr + (int)roundf(r_r); // nearest neighbour z coordinate in rotated  space
-      float x_r =  ((r + min_indeces.z + 0.5f) * spacing.z) - origin.z ;// converted to original space
+      float x_r =  ((r + min_indices.z + 0.5f) * spacing.z) - origin.z ;// converted to original space
 
       for (int dq = -2; dq <= 2; dq++)
         {
           float q = dq + (int)roundf(q_r);
-          float x_q = ((q + min_indeces.y + 0.5f) * spacing.y) - origin.y;
+          float x_q = ((q + min_indices.y + 0.5f) * spacing.y) - origin.y;
 
           for (int dp = -2; dp <= 2; dp++)
             {
               float p = dp + (int)roundf(p_r);
-              float x_p = ((p + min_indeces.x + 0.5f) * spacing.x) - origin.x;
+              float x_p = ((p + min_indices.x + 0.5f) * spacing.x) - origin.x;
 
 
 
@@ -255,17 +255,17 @@ rotateKernel_push(const float* __restrict__ in_im,
   for (int dr = -3; dr <= 3; dr++)
     {
       float r = dr + (int)roundf(r_r);
-      float x_r =  ((r + min_indeces.z + 0.5f) * spacing.z) - origin.z ;
+      float x_r =  ((r + min_indices.z + 0.5f) * spacing.z) - origin.z ;
 
       for (int dq = -2; dq <= 2; dq++)
         {
           float q = dq + (int)roundf(q_r);
-          float x_q = ((q + min_indeces.y + 0.5f) * spacing.y) - origin.y;
+          float x_q = ((q + min_indices.y + 0.5f) * spacing.y) - origin.y;
 
           for (int dp = -2; dp <= 2; dp++)
             {
               float p = dp + (int)roundf(p_r);
-              float x_p = ((p + min_indeces.x + 0.5f) * spacing.x) - origin.x;
+              float x_p = ((p + min_indices.x + 0.5f) * spacing.x) - origin.x;
 
 
               float delta_x = Xr_x - x_p;

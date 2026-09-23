@@ -22,14 +22,13 @@
 
     See STIR/LICENSE.txt for details
 */
-#pragma once
 
 #include <cuda_runtime.h>
 
 __global__
 void rotateKernel_pull(
-        const float* in_im,
         float* out_im,
+        const float* in_im,
         int3 image_dim,
         float3 spacing,
         float3 origin,
@@ -38,8 +37,8 @@ void rotateKernel_pull(
 
 __global__
 void rotateKernel_push(
-        const float* in_im,
         float* out_im,
+        const float* in_im,
         int3 image_dim,
         float3 spacing,
         float3 origin,

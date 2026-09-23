@@ -32,9 +32,9 @@
 #include <cstdio>
 
 //the following is a pull operation
-__global__ void forwardKernel(const float* __restrict__ in_im,
+__global__ void forwardKernel(float* __restrict__ out_sino,
+                              const float* __restrict__ in_im,
                               const float* __restrict__ in_umap,
-                             float* __restrict__ out_sino,
                              int3 dim,
                              float3 spacing,
                              bool do_atten)
@@ -88,8 +88,8 @@ __global__ void forwardKernel(const float* __restrict__ in_im,
 
 
 // the following is the adjoint operation (push)
-__global__ void backwardKernel(const float* __restrict__ in_sino,
-                               float* __restrict__ out_im,
+__global__ void backwardKernel(float* __restrict__ out_im,
+                               const float* __restrict__ in_sino,
                                const float* __restrict__ in_umap,
                                int3 dim,
                                float3 spacing,

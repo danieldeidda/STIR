@@ -26,7 +26,6 @@
 
 #include "stir/RegisteredParsingObject.h"
 #include "stir/recon_buildblock/BackProjectorByBin.h"
-#include "stir/recon_buildblock/SPECTGPU_projector/SPECTGPUHelper.h"
 #include "stir/cuda_utilities.h"
 
 START_NAMESPACE_STIR
@@ -138,7 +137,7 @@ protected:
   int num_views;
 private:
   shared_ptr<DataSymmetriesForViewSegmentNumbers> _symmetries_sptr;
-  SPECTGPUHelper _helper;
+//  SPECTGPUHelper _helper;
   int _cuda_device;
   bool _cuda_verbosity;
   bool _do_atten;
